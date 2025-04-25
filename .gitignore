@@ -1,0 +1,4 @@
+# Loại bỏ thư mục không cần thiết
+node_modules/
+.env
+dist/

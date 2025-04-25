@@ -36,6 +36,7 @@ export const signup = async (req, res, next) => {
         return res.status(500).json({ message: "Unable to add user" });
     }
     return res.status(201).json({ user });
+
 };
 export const updateUser = async (req, res, next) => {
     const id = req.params.id;
@@ -93,5 +94,5 @@ export const login = async (req, res, next) => {
     if (!isPasswordCorrect) {
         return res.status(400).json({ message: "Incorrect password" });
     }
-    return res.status(200).json({ message: "Login successful"});
+    return res.status(200).json({ message: "Login successful" });
 }   
