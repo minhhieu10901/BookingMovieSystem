@@ -3,6 +3,9 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import userRouter from './routes/user-routes.js';
 import adminRouter from './routes/admin-routes.js';
+import movieRouter from './routes/movie_routes.js';
+
+
 dotenv.config();
 const app = express();
 
@@ -10,6 +13,7 @@ const app = express();
 app.use(express.json()); // Parse JSON bodies (as sent by API clients)
 app.use("/user", userRouter);
 app.use("/admin", adminRouter);
+app.use("/movie", movieRouter);
 
 mongoose
     .connect(
