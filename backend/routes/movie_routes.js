@@ -7,5 +7,4 @@ movieRouter.get("/", getAllMovies); // add movie
 movieRouter.get("/:id", getMovieById); // get movie by id
 movieRouter.post("/", addMovie); // add movie
 
-
 export default movieRouter;

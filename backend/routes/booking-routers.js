@@ -1,6 +1,10 @@
 import express from 'express';
-import { addBooking, getAllBookings, getBookingById } from '../controllers/booking-controller.js';
+import { newBooking, getBookingById, deleteBooking, getAllBookings } from '../controllers/booking-controller.js';
 
-const bookingRouter = express.Router();
+const bookingsRouter = express.Router();
 
-bookingRouter.post("/", addBooking); // add booking
+bookingsRouter.post("/", newBooking); // add booking
+bookingsRouter.get("/:id", getBookingById); // get booking by id
+bookingsRouter.get("/", getAllBookings); // get all bookings
+bookingsRouter.delete("/:id", deleteBooking ); // delete
+export default bookingsRouter;

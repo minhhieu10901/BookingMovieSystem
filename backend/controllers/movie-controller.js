@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 import Movie from "../models/Movie.js";
+import mongoose from "mongoose";
+import Admin from "../models/Admin.js";
 
 export const addMovie = async (req, res, next) => {
     const extractedToken = req.headers.authorization.split(" ")[1]; // Bearer token
@@ -37,7 +39,14 @@ export const addMovie = async (req, res, next) => {
             featured,
             admin: adminId
         });
-        movie = await movie.save();
+        const session = await mongoose.startSession();
+        const adminUser = await Admin.findById(adminId);
+        session.startTransaction();
+        await movie.save({ session });
+        adminUser.addedMovies.push(movie);
+        await adminUser.save({ session });
+        await session.commitTransaction();
+        //movie = await movie.save();
     } catch (err) {
         return console.log(err);
     }

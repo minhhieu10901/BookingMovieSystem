@@ -63,3 +63,16 @@ export const loginAdmin = async (req, res, next) => {
     const token = jwt.sign({ id: existingAdmin._id }, process.env.SECRET_KEY, { expiresIn: "7d" });
     return res.status(200).json({ message: "Authentication Complete", token, id: existingAdmin._id });
 }
+export const getAdmins = async (req, res, next) => {
+    
+    let admins;
+    try {
+        admins = await Admin.find();
+    } catch (err) {
+        return console.log(err);
+    }
+    if (!admins) {
+        return res.status(500).json({ message: "Unable to fetch admins" });
+    }
+    return res.status(200).json({ admins });
+}
