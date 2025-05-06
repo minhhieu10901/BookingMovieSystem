@@ -18,7 +18,7 @@ export const getAllUsers = async (req, res, next) => {
 
 export const signup = async (req, res, next) => {
     const { name, email, password } = req.body;
-    if (!name && name.trim() === "" && !email && email.trim() === "" && !password && password.trim() === "") {
+    if (!name && name.trim() === "" || !email && email.trim() === "" || !password && password.trim() === "") {
         return res.status(422).json({ message: "Invalid Input" });
     }
     const hashedPassword = bcrypt.hashSync(password);
@@ -36,7 +36,7 @@ export const signup = async (req, res, next) => {
     if (!user) {
         return res.status(500).json({ message: "Unable to add user" });
     }
-    return res.status(201).json({ user });
+    return res.status(201).json({ id: user._id});
 
 };
 export const updateUser = async (req, res, next) => {
@@ -95,13 +95,13 @@ export const login = async (req, res, next) => {
     if (!isPasswordCorrect) {
         return res.status(400).json({ message: "Incorrect password" });
     }
-    return res.status(200).json({ message: "Login successful" });
-}   
-export const getBookingsOfUser = async (req, res, next) => {    
+    return res.status(200).json({ message: "Login successful", id: existingUser._id });
+}
+export const getBookingsOfUser = async (req, res, next) => {
     const id = req.params.id;
     let bookings;
     try {
-        bookings = await Bookings.find( { user: id });
+        bookings = await Bookings.find({ user: id });
     } catch (err) {
         return console.log(err);
     }
