@@ -31,13 +31,13 @@ const AddMovie = () => {
             console.error("Actors list is invalid");
             return;
         }
-        
+
         console.log(inputs, actors);
-        addMovie({...inputs, actors})
-        .then((res)=> console.log(res))
-        .catch((err)=> console.log(err));
+        addMovie({ ...inputs, actors })
+            .then((res) => console.log(res))
+            .catch((err) => console.log(err));
     }
-    
+
     return (
         <div>
             <form onSubmit={handleSubmit}>
@@ -81,13 +81,18 @@ const AddMovie = () => {
                         checked={inputs.featured}
                         onClick={(e) => setInputs((prevState) => ({ ...prevState, featured: e.target.checked }))}
                         sx={{ mr: "auto" }} />
-                        <Button type="submit" variant="contained" sx={{
-                            margin: "auto", borderRadius: 4, fontSize: 20, width: "30%", bgcolor: "#2d2b42", ":hover": {
-                                backgroundColor: "#121217"
-                            }
-                        }}>
-                            Add Movie
-                        </Button>
+                    <Button type="submit" variant="contained" sx={{
+                        margin: "auto", 
+                        borderRadius: 4, 
+                        fontSize: 20, 
+                        width: "30%",
+                        bgcolor: "#2d2b42", 
+                        ":hover": {
+                            backgroundColor: "#121217"
+                        },
+                    }}>
+                        Add Movie
+                    </Button>
 
 
                 </Box>

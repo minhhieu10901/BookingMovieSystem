@@ -14,6 +14,7 @@ export const addMovie = async (req, res, next) => {
     //verify token
     jwt.verify(extractedToken, process.env.SECRET_KEY, (err, decrypted) => {
         if (err) {
+            console.error("JWT Verification Error:", err);
             return res.status(400).json({ message: `${err.message}` });
         } else {
             adminId = decrypted.id;
@@ -23,9 +24,9 @@ export const addMovie = async (req, res, next) => {
     // Create new movie
     const { title, description, actors, releaseDate, posterUrl, featured } = req.body;
     if (
-        !title && title.trim() === "" &&
-        !description && description.trim() === "" &&
-        !posterUrl && posterUrl.trim() === ""
+        !title || title.trim() === "" &&
+        !description || description.trim() === "" &&
+        !posterUrl || posterUrl.trim() === ""
     ) {
         return res.status(422).json({ message: "Invalid Inputs" });
     }

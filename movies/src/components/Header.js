@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { AppBar, Box, Toolbar, Autocomplete, TextField, Tab, Tabs } from "@mui/material";
+import { AppBar, Box, Toolbar, Autocomplete, TextField, Tab, Tabs, IconButton } from "@mui/material";
 import MovieIcon from '@mui/icons-material/Movie';
 import { getAllMovies } from "../api-helpers/api-helpers.js";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { adminActions, userActions } from "../store/";
 
 const Header = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const isAdminLoggedIn = useSelector((state) => state.admin.isLoggedIn);
     const isUserLoggedIn = useSelector((state) => state.user.isLoggedIn);
     const [value, setValue] = useState(0);
@@ -20,14 +21,25 @@ const Header = () => {
     const logout = (isAdmin) => {
         dispatch(isAdmin ? adminActions.logout() : userActions.logout())
     }
+    const handleChange = (e, val) => {
+
+        const movie = movies.find((m) => m.title === val);
+        console.log(movie);
+        if(isUserLoggedIn){
+            navigate(`/booking/${movie._id}`)
+        }
+    }
     return <AppBar position="sticky" sx={{ bgcolor: "#2E3B55" }} >
         <Toolbar>
             <Box width={"20%"}>
-                <MovieIcon />
+                <IconButton LinkComponent={Link} to="/">
+                    <MovieIcon />
+                </IconButton>
             </Box>
             <Box width={"30%"} margin={"auto"} >
-                <Autocomplete width={"100%"}
-                    //id="free-solo-demo"
+                <Autocomplete
+                    onChange={handleChange}
+                    width={"100%"}
                     freeSolo
                     options={movies && movies.map((option) => option.title)}
                     renderInput={(params) =>

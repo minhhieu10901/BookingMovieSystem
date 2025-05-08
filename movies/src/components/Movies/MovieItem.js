@@ -20,7 +20,14 @@ const MovieItem = ({ title, releaseDate, posterUrl, id }) => {
         </Typography>
       </CardContent>
       <CardActions>
-        <Button LinkComponent={Link} to={`/booking/${id}`} sx={{ margin: "auto" }} size="small">
+        <Button 
+        variant='contained' 
+        fullWidth 
+        LinkComponent={Link} to={`/booking/${id}`} 
+        sx={{ margin: "auto", bgcolor:"#2b2d42",":hover": {
+                            backgroundColor: "#121217"
+                        }, }} 
+        size="small">
           Booking
         </Button>
       </CardActions>
