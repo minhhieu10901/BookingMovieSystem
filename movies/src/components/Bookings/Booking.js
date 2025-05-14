@@ -22,7 +22,7 @@ const Booking = () => {
         console.log(inputs);
         newBooking({ ...inputs, movie: movie._id })
             .then((res) => console.log(res))
-            .catch((err) => console.log(err)) 
+            .catch((err) => console.log(err))
     };
     console.log(movie);
     return (
@@ -85,4 +85,4 @@ const Booking = () => {
     );
 }
 
-export default Booking
+export default Booking  

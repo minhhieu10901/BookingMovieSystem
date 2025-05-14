@@ -1,95 +1,242 @@
-import Booking from "../models/Bookings.js";
-import Movie from "../models/Movie.js";
+import Booking from "../models/Booking.js";
+import Showtime from "../models/Showtime.js";
 import User from "../models/User.js";
+import Seat from "../models/Seat.js";
+import Ticket from "../models/Ticket.js";
+import Payment from "../models/Payment.js";
 import mongoose from "mongoose";
 
 export const newBooking = async (req, res, next) => {
-    const { movie, date, seatNumber, user } = req.body;
+    const { showtime, seats, tickets, paymentMethod } = req.body;
+    const userId = req.body.user || req.user.id;
 
-    let existingMovie;
-    let existingUser;
+    let existingShowtime, existingUser, existingSeats, existingTickets;
     try {
-        existingMovie = await Movie.findById(movie);
-        existingUser = await User.findById(user);
+        existingShowtime = await Showtime.findById(showtime);
+        existingUser = await User.findById(userId);
+        existingSeats = await Seat.find({ _id: { $in: seats } });
+        existingTickets = await Ticket.find({ _id: { $in: tickets.map(t => t.ticket) } });
     } catch (error) {
-        return console.log(error);
+        return res.status(500).json({ message: "Error finding resources", error: error.message });
     }
-    if (!existingMovie) {
-        return res.status(404).json({ message: "Movie not found with given ID" });
+
+    if (!existingShowtime) {
+        return res.status(404).json({ message: "Showtime not found" });
     }
     if (!existingUser) {
-        return res.status(404).json({ message: "User not found with given ID" });
+        return res.status(404).json({ message: "User not found" });
+    }
+    if (existingSeats.length !== seats.length) {
+        return res.status(404).json({ message: "Some seats not found" });
+    }
+    if (existingTickets.length !== tickets.length) {
+        return res.status(404).json({ message: "Some tickets not found" });
     }
 
-    let booking;
-    try {
-        booking = new Booking({
-            movie,
-            date: new Date(`${date}`),
-            seatNumber,
-            user,
+    // Kiểm tra ghế có sẵn không
+    const unavailableSeats = existingSeats.filter(seat =>
+        seat.status !== 'available' ||
+        existingShowtime.bookedSeats.includes(seat._id)
+    );
+    if (unavailableSeats.length > 0) {
+        return res.status(400).json({
+            message: "Some seats are not available",
+            seats: unavailableSeats.map(seat => seat.seatNumber)
         });
-        const session = await mongoose.startSession();
-        session.startTransaction();
+    }
+
+    // Tính tổng tiền
+    const totalAmount = tickets.reduce((total, ticket) => {
+        const ticketInfo = existingTickets.find(t => t._id.toString() === ticket.ticket);
+        return total + (ticketInfo.price * ticket.quantity);
+    }, 0);
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        // Tạo payment
+        const payment = new Payment({
+            user: userId,
+            showtime,
+            seats,
+            tickets,
+            totalAmount,
+            paymentMethod,
+            status: 'pending'
+        });
+        await payment.save({ session });
+
+        // Tạo booking
+        const booking = new Booking({
+            user: userId,
+            showtime,
+            seats,
+            tickets,
+            payment: payment._id,
+            totalAmount,
+            status: 'pending'
+        });
         await booking.save({ session });
-        existingMovie.bookings.push(booking);
-        existingUser.bookings.push(booking);
-        await existingMovie.save({ session });
+
+        // Cập nhật trạng thái ghế
+        for (const seatId of seats) {
+            await Seat.findByIdAndUpdate(
+                seatId,
+                { $set: { status: 'booked' } },
+                { session }
+            );
+        }
+
+        // Cập nhật showtime
+        existingShowtime.bookedSeats.push(...seats);
+        await existingShowtime.save({ session });
+
+        // Cập nhật user
+        existingUser.bookings.push(booking._id);
         await existingUser.save({ session });
-        await booking.save({ session });
+
         await session.commitTransaction();
-        //booking = await booking.save();
+
+        // Verify seat status after transaction
+        const updatedSeats = await Seat.find({ _id: { $in: seats } });
+        const allSeatsBooked = updatedSeats.every(seat => seat.status === 'booked');
+
+        return res.status(201).json({
+            message: "Booking created successfully",
+            booking,
+            payment,
+            seatsUpdated: allSeatsBooked
+        });
     } catch (error) {
-        return console.log(error);
+        await session.abortTransaction();
+        return res.status(500).json({
+            message: "Error creating booking",
+            error: error.message
+        });
     }
-    if (!booking) {
-        return res.status(500).json({ message: "Unable to create a booking" });
-    }
-    return res.status(201).json({ booking });
-}
+};
+
 export const getBookingById = async (req, res, next) => {
     const id = req.params.id;
-    let booking;
     try {
-        booking = await Booking.findById(id)//.populate("movie").populate("user"); 
-    } catch (err) {
-        return console.log(err);
-    }
-    if (!booking) {
-        return res.status(500).json({ message: "Invalid Booking ID" });
-    }
-    return res.status(200).json({ booking });
-}
-export const deleteBooking = async (req, res, next) => {
-    const id = req.params.id;
-    let booking;
-    try {
-        booking = await Booking.findByIdAndDelete(id).populate("user movie");
-        const session = await mongoose.startSession();
-        session.startTransaction();
-        await booking.movie.bookings.pull(booking);
-        await booking.user.bookings.pull(booking);
-        await booking.movie.save({ session });
-        await booking.user.save({ session });
-        await session.commitTransaction();
-    } catch (err) {
-        return console.log(err);
-    }
-    if (!booking) {
-        return res.status(500).json({ message: "Unable to delete booking" });
-    }
-    return res.status(200).json({ message: "Booking deleted successfully" });
-}
-export const getAllBookings = async (req, res, next) => {
-    let bookings;
-    try {
-        bookings = await Booking.find().populate("user movie");
+        const booking = await Booking.findById(id)
+            .populate('user', 'name email')
+            .populate('showtime')
+            .populate('seats')
+            .populate({
+                path: 'tickets.ticket',
+                model: 'Ticket'
+            })
+            .populate('payment');
 
+        if (!booking) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
+        return res.status(200).json({ booking });
     } catch (err) {
-        return console.log(err);
+        return res.status(500).json({ message: "Error finding booking", error: err.message });
     }
-    if (!bookings) {
-        return res.status(500).json({ message: "Request failed" });
+};
+
+export const getUserBookings = async (req, res, next) => {
+    const userId = req.params.userId;
+    try {
+        const bookings = await Booking.find({ user: userId })
+            .populate('showtime')
+            .populate('seats')
+            .populate({
+                path: 'tickets.ticket',
+                model: 'Ticket'
+            })
+            .populate('payment')
+            .sort({ bookingDate: -1 });
+
+        return res.status(200).json({ bookings });
+    } catch (err) {
+        return res.status(500).json({ message: "Error finding bookings", error: err.message });
     }
-    return res.status(200).json({ bookings });
-}
+};
+
+export const cancelBooking = async (req, res, next) => {
+    const id = req.params.id;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const booking = await Booking.findById(id)
+            .populate('showtime')
+            .populate('seats')
+            .populate('payment');
+
+        if (!booking) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
+
+        if (booking.status === 'cancelled') {
+            return res.status(400).json({ message: "Booking is already cancelled" });
+        }
+
+        // Cập nhật trạng thái booking
+        booking.status = 'cancelled';
+        await booking.save({ session });
+
+        // Cập nhật trạng thái payment
+        booking.payment.status = 'refunded';
+        booking.payment.refundDate = new Date();
+        booking.payment.refundReason = req.body.reason || 'Cancelled by user';
+        await booking.payment.save({ session });
+
+        // Cập nhật trạng thái ghế
+        await Seat.updateMany(
+            { _id: { $in: booking.seats } },
+            { $set: { status: 'available' } },
+            { session }
+        );
+
+        // Cập nhật showtime - xóa seats khỏi bookedSeats
+        const showtime = booking.showtime;
+        showtime.bookedSeats = showtime.bookedSeats.filter(
+            seatId => !booking.seats.map(seat => seat._id.toString()).includes(seatId.toString())
+        );
+        await showtime.save({ session });
+
+        await session.commitTransaction();
+
+        // Lấy lại booking với seats đã cập nhật
+        const updatedBooking = await Booking.findById(id)
+            .populate('showtime')
+            .populate('seats')
+            .populate('payment');
+
+        return res.status(200).json({
+            message: "Booking cancelled successfully",
+            booking: updatedBooking
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        return res.status(500).json({
+            message: "Error cancelling booking",
+            error: error.message
+        });
+    }
+};
+
+export const getAllBookings = async (req, res, next) => {
+    try {
+        const bookings = await Booking.find()
+            .populate('user', 'name email')
+            .populate('showtime')
+            .populate('seats')
+            .populate({
+                path: 'tickets.ticket',
+                model: 'Ticket'
+            })
+            .populate('payment')
+            .sort({ bookingDate: -1 });
+
+        return res.status(200).json({ bookings });
+    } catch (err) {
+        return res.status(500).json({ message: "Error finding bookings", error: err.message });
+    }
+};

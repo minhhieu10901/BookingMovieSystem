@@ -1,4 +1,3 @@
-
 import Admin from "../models/Admin.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -60,8 +59,21 @@ export const loginAdmin = async (req, res, next) => {
     if (!isPasswordCorrect) {
         return res.status(400).json({ message: "Incorrect password" });
     }
-    const token = jwt.sign({ id: existingAdmin._id }, process.env.SECRET_KEY, { expiresIn: "7d" });
-    return res.status(200).json({ message: "Authentication Complete", token, id: existingAdmin._id });
+    const token = jwt.sign({ id: existingAdmin._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+    // Set cookie
+    res.cookie("accessToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    return res.status(200).json({
+        message: "Authentication Complete",
+        token,
+        id: existingAdmin._id
+    });
 }
 export const getAdmins = async (req, res, next) => {
 
@@ -76,7 +88,7 @@ export const getAdmins = async (req, res, next) => {
     }
     return res.status(200).json({ admins });
 }
-export const getAdminById = async(req, res, next)=>{
+export const getAdminById = async (req, res, next) => {
     const id = req.params.id;
     let admin;
     try {
@@ -84,8 +96,8 @@ export const getAdminById = async(req, res, next)=>{
     } catch (error) {
         return console.log(error);
     }
-    if(!admin){
+    if (!admin) {
         return console.log("Can't find Admin B Id");
     }
-    return res.status(200).json({admin});
+    return res.status(200).json({ admin });
 }

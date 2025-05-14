@@ -1,79 +1,252 @@
-import React, { useEffect, useState } from "react";
-import { AppBar, Box, Toolbar, Autocomplete, TextField, Tab, Tabs, IconButton } from "@mui/material";
-import MovieIcon from '@mui/icons-material/Movie';
-import { getAllMovies } from "../api-helpers/api-helpers.js";
-import { Link, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { adminActions, userActions } from "../store/";
+import React, { useState } from 'react';
+import {
+    AppBar,
+    Box,
+    Toolbar,
+    IconButton,
+    Typography,
+    Menu,
+    Container,
+    Avatar,
+    Button,
+    Tooltip,
+    MenuItem,
+} from '@mui/material';
+import {
+    Menu as MenuIcon,
+    Movie as MovieIcon,
+} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { adminActions, userActions } from '../store';
 
 const Header = () => {
-    const dispatch = useDispatch();
     const navigate = useNavigate();
+    const dispatch = useDispatch();
     const isAdminLoggedIn = useSelector((state) => state.admin.isLoggedIn);
     const isUserLoggedIn = useSelector((state) => state.user.isLoggedIn);
-    const [value, setValue] = useState(0);
-    const [movies, setMovies] = useState([]);
-    useEffect(() => {
-        getAllMovies()
-            .then((data) => setMovies(data.movies))
-            .catch((err) => console.log(err));
-    }, []);
-    const logout = (isAdmin) => {
-        dispatch(isAdmin ? adminActions.logout() : userActions.logout())
-    }
-    const handleChange = (e, val) => {
 
-        const movie = movies.find((m) => m.title === val);
-        console.log(movie);
-        if(isUserLoggedIn){
-            navigate(`/booking/${movie._id}`)
+    const [anchorElNav, setAnchorElNav] = useState(null);
+    const [anchorElUser, setAnchorElUser] = useState(null);
+
+    const handleOpenNavMenu = (event) => {
+        setAnchorElNav(event.currentTarget);
+    };
+    const handleOpenUserMenu = (event) => {
+        setAnchorElUser(event.currentTarget);
+    };
+
+    const handleCloseNavMenu = () => {
+        setAnchorElNav(null);
+    };
+
+    const handleCloseUserMenu = () => {
+        setAnchorElUser(null);
+    };
+
+    const handleLogout = () => {
+        if (isAdminLoggedIn) {
+            dispatch(adminActions.logout());
+            localStorage.removeItem("adminId");
+        } else {
+            dispatch(userActions.logout());
+            localStorage.removeItem("userId");
         }
-    }
-    return <AppBar position="sticky" sx={{ bgcolor: "#2E3B55" }} >
-        <Toolbar>
-            <Box width={"20%"}>
-                <IconButton LinkComponent={Link} to="/">
-                    <MovieIcon />
-                </IconButton>
-            </Box>
-            <Box width={"30%"} margin={"auto"} >
-                <Autocomplete
-                    onChange={handleChange}
-                    width={"100%"}
-                    freeSolo
-                    options={movies && movies.map((option) => option.title)}
-                    renderInput={(params) =>
-                        <TextField sx={{ input: { color: "white" } }} variant="standard" {...params} label="Search Movies" />}
-                />
-            </Box>
-            <Box display={"flex"} >
-                <Tabs indicatorColor="secondary" textColor="inherit" value={value} onChange={(e, val) => setValue(val)}>
-                    <Tab LinkComponent={Link} to="/movies" label="Movies" />
+        navigate("/");
+        handleCloseUserMenu();
+    };
 
-                    {!isAdminLoggedIn && !isUserLoggedIn &&
-                        [
-                            <Tab LinkComponent={Link} to="/admin" label="Admin" key="admin" />,
-                            <Tab LinkComponent={Link} to="/auth" label="Auth" key="auth" />
-                        ]
-                    }
+    const getNavItems = () => {
+        if (isAdminLoggedIn) {
+            return [
+                { label: 'Movies', path: '/movies' },
+                { label: 'Add Movie', path: '/add' },
+                { label: 'Profile', path: '/user-admin' },
+            ];
+        } else if (isUserLoggedIn) {
+            return [
+                { label: 'Movies', path: '/movies' },
+                { label: 'Profile', path: '/user' },
+            ];
+        } else {
+            return [
+                { label: 'Movies', path: '/movies' },
+                { label: 'Auth', path: '/auth' },
+                { label: 'Admin', path: '/admin' },
+            ];
+        }
+    };
 
-                    {isUserLoggedIn &&
-                        [
-                            <Tab LinkComponent={Link} to="/user" label="Profile" key="user" />,
-                            <Tab onClick={() => logout(false)} LinkComponent={Link} to="/" label="Logout" key="logoutUser" />
-                        ]
-                    }
+    const navItems = getNavItems();
 
-                    {isAdminLoggedIn &&
-                        [
-                            <Tab LinkComponent={Link} to="/add" label="Add Movies" key="addMovies" />,
-                            <Tab LinkComponent={Link} to="/user-admin" label="Profile" key="profileAdmin" />,
-                            <Tab onClick={() => logout(true)} LinkComponent={Link} to="/" label="Logout" key="logoutAdmin" />
-                        ]
-                    }
-                </Tabs>
-            </Box>
-        </Toolbar>
-    </AppBar>
-}
+    return (
+        <AppBar
+            position="sticky"
+            sx={{
+                bgcolor: 'primary.main',
+                boxShadow: 'none',
+                borderBottom: '1px solid',
+                borderColor: 'primary.dark',
+            }}
+        >
+            <Container maxWidth="xl">
+                <Toolbar
+                    disableGutters
+                    sx={{
+                        minHeight: '64px',
+                        justifyContent: 'space-between'
+                    }}
+                >
+                    {/* Logo - Mobile */}
+                    <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center' }}>
+                        <IconButton
+                            size="large"
+                            aria-label="menu"
+                            aria-controls="menu-appbar"
+                            aria-haspopup="true"
+                            onClick={handleOpenNavMenu}
+                            color="inherit"
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                        <MovieIcon sx={{ mr: 1 }} />
+                        <Typography
+                            variant="h6"
+                            noWrap
+                            component="a"
+                            href="/"
+                            sx={{
+                                fontFamily: 'monospace',
+                                fontWeight: 700,
+                                letterSpacing: '.2rem',
+                                color: 'inherit',
+                                textDecoration: 'none',
+                            }}
+                        >
+                            MOVIES
+                        </Typography>
+                    </Box>
+
+                    {/* Logo - Desktop */}
+                    <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+                        <MovieIcon sx={{ mr: 1 }} />
+                        <Typography
+                            variant="h6"
+                            noWrap
+                            component="a"
+                            href="/"
+                            sx={{
+                                fontFamily: 'monospace',
+                                fontWeight: 700,
+                                letterSpacing: '.2rem',
+                                color: 'inherit',
+                                textDecoration: 'none',
+                            }}
+                        >
+                            MOVIES
+                        </Typography>
+                    </Box>
+
+                    {/* Navigation - Mobile */}
+                    <Menu
+                        id="menu-appbar"
+                        anchorEl={anchorElNav}
+                        anchorOrigin={{
+                            vertical: 'bottom',
+                            horizontal: 'left',
+                        }}
+                        keepMounted
+                        transformOrigin={{
+                            vertical: 'top',
+                            horizontal: 'left',
+                        }}
+                        open={Boolean(anchorElNav)}
+                        onClose={handleCloseNavMenu}
+                        sx={{
+                            display: { xs: 'block', md: 'none' },
+                        }}
+                    >
+                        {navItems.map((item) => (
+                            <MenuItem
+                                key={item.path}
+                                onClick={() => {
+                                    navigate(item.path);
+                                    handleCloseNavMenu();
+                                }}
+                            >
+                                <Typography textAlign="center">{item.label}</Typography>
+                            </MenuItem>
+                        ))}
+                    </Menu>
+
+                    {/* Navigation - Desktop */}
+                    <Box sx={{
+                        display: { xs: 'none', md: 'flex' },
+                        gap: 2,
+                        ml: 4,
+                        flex: 1
+                    }}>
+                        {navItems.map((item) => (
+                            <Button
+                                key={item.path}
+                                onClick={() => {
+                                    navigate(item.path);
+                                    handleCloseNavMenu();
+                                }}
+                                sx={{
+                                    color: 'white',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 500,
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    }
+                                }}
+                            >
+                                {item.label}
+                            </Button>
+                        ))}
+                    </Box>
+
+                    {/* User Menu */}
+                    {(isUserLoggedIn || isAdminLoggedIn) && (
+                        <Box sx={{ flexShrink: 0 }}>
+                            <Tooltip title="Account settings">
+                                <IconButton onClick={handleOpenUserMenu} sx={{ p: 0.5 }}>
+                                    <Avatar
+                                        sx={{
+                                            width: 32,
+                                            height: 32,
+                                            bgcolor: 'primary.dark',
+                                        }}
+                                    />
+                                </IconButton>
+                            </Tooltip>
+                            <Menu
+                                sx={{ mt: '45px' }}
+                                id="menu-appbar"
+                                anchorEl={anchorElUser}
+                                anchorOrigin={{
+                                    vertical: 'top',
+                                    horizontal: 'right',
+                                }}
+                                keepMounted
+                                transformOrigin={{
+                                    vertical: 'top',
+                                    horizontal: 'right',
+                                }}
+                                open={Boolean(anchorElUser)}
+                                onClose={handleCloseUserMenu}
+                            >
+                                <MenuItem onClick={handleLogout}>
+                                    <Typography textAlign="center">Logout</Typography>
+                                </MenuItem>
+                            </Menu>
+                        </Box>
+                    )}
+                </Toolbar>
+            </Container>
+        </AppBar>
+    );
+};
+
 export default Header;

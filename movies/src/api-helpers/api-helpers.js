@@ -135,3 +135,52 @@ export const getAdminById = async () => {
     return resData;
 
 }
+
+export const addShowtime = async (data) => {
+    const res = await axios.post("/showtime", {
+        movie: data.movie,
+        date: data.date,
+        time: data.time,
+        screen: data.screen,
+        price: data.price,
+    })
+        .catch((err) => console.log(err));
+    if (res.status !== 201) {
+        return console.log("No data found");
+    }
+    const resData = await res.data;
+    return resData;
+};
+
+export const getShowtimesByMovie = async (movieId) => {
+    const res = await axios
+        .get(`/showtime/movie/${movieId}`)
+        .catch((err) => console.log(err));
+    if (res.status !== 200) {
+        return console.log("No data found");
+    }
+    const resData = await res.data;
+    return resData;
+};
+
+export const updateShowtime = async (id, data) => {
+    const res = await axios
+        .put(`/showtime/${id}`, data)
+        .catch((err) => console.log(err));
+    if (res.status !== 200) {
+        return console.log("No data found");
+    }
+    const resData = await res.data;
+    return resData;
+};
+
+export const deleteShowtime = async (id) => {
+    const res = await axios
+        .delete(`/showtime/${id}`)
+        .catch((err) => console.log(err));
+    if (res.status !== 200) {
+        return console.log("No data found");
+    }
+    const resData = await res.data;
+    return resData;
+};

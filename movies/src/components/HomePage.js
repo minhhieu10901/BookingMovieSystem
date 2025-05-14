@@ -6,11 +6,15 @@ import { getAllMovies } from '../api-helpers/api-helpers'
 
 const HomePage = () => {
     const [movies, setMovies] = React.useState([])
-    useEffect(() =>{
+    useEffect(() => {
         getAllMovies()
-        .then((data) => setMovies(data.movies))
-        .catch((err) => console.log(err))
-    },[])
+            .then((data) => {
+                if (data && data.movies) {
+                    setMovies(data.movies);
+                }
+            })
+            .catch((err) => console.error("Error fetching movies:", err));
+    }, []);
     return <Box width={"100%"} height="100%" margin="auto" marginTop={2}>
         <Box margin={'auto'} width="80%" height={"50vh"} padding={2}>
             <img src="https://collider.com/wp-content/uploads/inception_movie_poster_banner_01.jpg"
@@ -22,18 +26,19 @@ const HomePage = () => {
             <Typography variant="h4" textAlign={"center"}>Last Releases</Typography>
         </Box>
         <Box display="flex" width="100%" justifyContent={"center"} flexWrap="wrap">
-            { movies.slice(0,4) && movies.map((movie,index) => (
-                <MovieItem 
-                id={movie.id} 
-                title={movie.title} 
-                releaseDate={movie.releaseDate} 
-                posterUrl={movie.posterUrl} 
-                key={index} />
+            {movies && movies.slice(0, 4).map((movie, index) => (
+                <MovieItem
+                    key={movie._id}
+                    id={movie._id}
+                    title={movie.title}
+                    releaseDate={movie.releaseDate}
+                    posterUrl={movie.posterUrl}
+                />
             ))}
         </Box>
         <Box display="flex" padding={5} margin={"auto"}>
-            <Button LinkComponent={Link} to="/movies" variant="outlined" sx = {{margin:"auto",color:"2E3B55"}}>
-            View All Movies
+            <Button LinkComponent={Link} to="/movies" variant="outlined" sx={{ margin: "auto", color: "2E3B55" }}>
+                View All Movies
             </Button>
         </Box>
     </Box>

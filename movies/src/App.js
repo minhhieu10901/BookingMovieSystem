@@ -11,6 +11,9 @@ import Booking from "./components/Bookings/Booking";
 import UserProfile from "./Profile/UserProfile";
 import AddMovie from "./components/Movies/AddMovie";
 import AdminProfile from "./Profile/AdminProfile";
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline, Container, Box } from '@mui/material';
+import { theme } from './theme';
 
 function App() {
   const dispatch = useDispatch();
@@ -26,38 +29,55 @@ function App() {
     }
   }, [dispatch])// them dispatch vao de ko bi loi khi reload trang
   return (
-    <div >
-      <Header />
-      <section>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/movies" element={<Movies />} />
-          {!isUserLoggedIn && !isAdminLoggedIn && (
-            <>
-              {" "}
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/auth" element={<Auth />} />
-            </>
-          )}
-          {isUserLoggedIn && !isAdminLoggedIn && (
-            <>
-              {" "}
-              <Route path="/user" element={<UserProfile />} />
-              <Route path="/booking/:id" element={<Booking />} />
-            </>
-          )}
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box
+        sx={{
+          minHeight: '100vh',
+          bgcolor: 'background.default',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <Header />
+        <Container
+          component="main"
+          sx={{
+            flex: 1,
+            py: 4,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/movies" element={<Movies />} />
+            {!isUserLoggedIn && !isAdminLoggedIn && (
+              <>
+                {" "}
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/auth" element={<Auth />} />
+              </>
+            )}
+            {isUserLoggedIn && !isAdminLoggedIn && (
+              <>
+                {" "}
+                <Route path="/user" element={<UserProfile />} />
+                <Route path="/booking/:id" element={<Booking />} />
+              </>
+            )}
 
-          {isAdminLoggedIn && !isUserLoggedIn && (
-            <>
-              {" "}
-              <Route path="/add" element={<AddMovie />} />
-              <Route path="/user-admin" element={<AdminProfile />} />
-            </>)
-          }
-
-        </Routes>
-      </section>
-    </div>
+            {isAdminLoggedIn && !isUserLoggedIn && (
+              <>
+                {" "}
+                <Route path="/add" element={<AddMovie />} />
+                <Route path="/user-admin" element={<AdminProfile />} />
+              </>
+            )}
+          </Routes>
+        </Container>
+      </Box>
+    </ThemeProvider>
   );
 }
 

@@ -1,7 +1,7 @@
-
-import Bookings from "../models/Bookings.js";
+import Bookings from "../models/Booking.js";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+
 
 export const getAllUsers = async (req, res, next) => {
     let users;
@@ -17,27 +17,77 @@ export const getAllUsers = async (req, res, next) => {
 };
 
 export const signup = async (req, res, next) => {
-    const { name, email, password } = req.body;
-    if (!name && name.trim() === "" || !email && email.trim() === "" || !password && password.trim() === "") {
-        return res.status(422).json({ message: "Invalid Input" });
-    }
-    const hashedPassword = bcrypt.hashSync(password);
-    let user;
     try {
-        user = new User({
+        const { name, email, password } = req.body;
+
+        // Validate input
+        if (!name || name.trim() === "" || !email || email.trim() === "" || !password || password.trim() === "") {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid Input",
+                details: "Name, email and password are required"
+            });
+        }
+
+        // Check if email already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: "Email already exists",
+                details: "Please use a different email address"
+            });
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid password",
+                details: "Password must be at least 6 characters long"
+            });
+        }
+
+        // Hash password
+        const hashedPassword = bcrypt.hashSync(password);
+
+        // Create new user
+        const user = new User({
             name,
             email,
             password: hashedPassword,
         });
-        user = await user.save();
-    } catch (err) {
-        return console.log(err);
-    }
-    if (!user) {
-        return res.status(500).json({ message: "Unable to add user" });
-    }
-    return res.status(201).json({ id: user._id });
 
+        // Save user
+        const savedUser = await user.save();
+
+        if (!savedUser) {
+            return res.status(500).json({
+                success: false,
+                message: "Unable to add user",
+                details: "Database error occurred"
+            });
+        }
+
+        // Return success response
+        return res.status(201).json({
+            success: true,
+            message: "User registered successfully",
+            user: {
+                id: savedUser._id,
+                name: savedUser.name,
+                email: savedUser.email,
+                bookings: savedUser.bookings
+            }
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            message: "Error registering user",
+            details: err.message
+        });
+    }
 };
 export const updateUser = async (req, res, next) => {
     const id = req.params.id;
@@ -45,17 +95,9 @@ export const updateUser = async (req, res, next) => {
     if (!name && name.trim() === "" && !email && email.trim() === "" && !password && password.trim() === "") {
         return res.status(422).json({ message: "Invalid Input" });
     }
-    const hashedPassword = bcrypt.hashSync(password);
     let user;
     try {
-        user = await User.findByIdAndUpdate(id, { name, email, password: hashedPassword });
-        // if (!user) {
-        //     return res.status(404).json({ message: "User not found" });
-        // }
-        // user.name = name;
-        // user.email = email;
-        // user.password = bcrypt.hashSync(password);
-        // await user.save();
+        user = await User.findByIdAndUpdate(id, { name, email, password });
     } catch (err) {
         return console.log(err);
     }
@@ -64,6 +106,7 @@ export const updateUser = async (req, res, next) => {
     }
     return res.status(200).json({ message: "User updated successfully" });
 };
+
 export const deleteUser = async (req, res, next) => {
     const id = req.params.id;
     let user;
@@ -77,26 +120,66 @@ export const deleteUser = async (req, res, next) => {
     }
     return res.status(200).json({ message: "User deleted successfully" });
 };
+
 export const login = async (req, res, next) => {
-    const { email, password } = req.body;
-    if (!email && email.trim() === "" && !password && password.trim() === "") {
-        return res.status(422).json({ message: "Invalid Input" });
-    }
-    let existingUser;
     try {
-        existingUser = await User.findOne({ email });
+        // Check if request body exists
+        if (!req.body) {
+            return res.status(400).json({
+                success: false,
+                message: "Request body is missing"
+            });
+        }
+
+        const { email, password } = req.body;
+
+        // Validate input
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and password are required"
+            });
+        }
+
+        // Find user
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Verify password
+        const isPasswordCorrect = bcrypt.compareSync(password, user.password);
+        if (!isPasswordCorrect) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid password"
+            });
+        }
+
+        // Return success response
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                bookings: user.bookings
+            }
+        });
     } catch (err) {
-        return console.log(err);
+        console.error("Login error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: err.message
+        });
     }
-    if (!existingUser) {
-        return res.status(404).json({ message: "Unable to find user from this ID" });
-    }
-    const isPasswordCorrect = bcrypt.compareSync(password, existingUser.password);
-    if (!isPasswordCorrect) {
-        return res.status(400).json({ message: "Incorrect password" });
-    }
-    return res.status(200).json({ message: "Login successful", id: existingUser._id });
-}
+};
+
 export const getBookingsOfUser = async (req, res, next) => {
     const id = req.params.id;
     let bookings;
@@ -113,6 +196,7 @@ export const getBookingsOfUser = async (req, res, next) => {
     }
     return res.status(200).json({ bookings });
 }
+
 export const getUserById = async (req, res, next) => {
     const id = req.params.id;
     let user;
