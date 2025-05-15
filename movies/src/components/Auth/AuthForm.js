@@ -1,4 +1,4 @@
-import { Box, Button, Dialog, FormLabel, IconButton, TextField, Typography } from '@mui/material'
+import { Box, Button, Dialog, FormLabel, IconButton, TextField, Typography, Alert } from '@mui/material'
 import React, { useState } from 'react'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Link } from 'react-router-dom';
@@ -6,7 +6,7 @@ const labelStyle = {
     mt: 1,
     mb: 1,
 }
-const AuthForm = ({ onSubmit, isAdmin }) => {
+const AuthForm = ({ onSubmit, isAdmin, errorMessage }) => {
     const [inputs, setInputs] = useState({
         name: "",
         email: "",
@@ -35,10 +35,15 @@ const AuthForm = ({ onSubmit, isAdmin }) => {
                 display="flex"
                 flexDirection="column"
                 justifyContent="center"
-
                 margin="auto"
                 alignContent="center"
             >
+                {errorMessage && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                        {errorMessage}
+                    </Alert>
+                )}
+
                 {!isAdmin && isSignUp && (
                     <> {""}
                         <FormLabel sx={labelStyle}>Name</FormLabel>

@@ -281,54 +281,87 @@ export const deleteMovie = async (req, res, next) => {
     const { id } = req.params;
 
     // Verify token
-    const extractedToken = req.headers.authorization.split(" ")[1];
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+            success: false,
+            message: "Yêu cầu xác thực. Vui lòng đăng nhập lại."
+        });
+    }
+
+    const extractedToken = authHeader.split(" ")[1];
     let adminId;
     try {
         const decoded = jwt.verify(extractedToken, process.env.JWT_SECRET);
         adminId = decoded.id;
     } catch (err) {
-        return res.status(401).json({ message: "Invalid token" });
+        return res.status(401).json({
+            success: false,
+            message: "Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại."
+        });
     }
 
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-        const movie = await Movie.findById(id);
+        // Tìm phim cần xóa
+        const movie = await Movie.findById(id).session(session);
         if (!movie) {
             await session.abortTransaction();
-            return res.status(404).json({ message: "Movie not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Không tìm thấy phim"
+            });
         }
 
-        // Check if admin is authorized
+        // Kiểm tra quyền xóa phim
         if (movie.admin.toString() !== adminId) {
             await session.abortTransaction();
-            return res.status(403).json({ message: "Not authorized to delete this movie" });
+            return res.status(403).json({
+                success: false,
+                message: "Bạn không có quyền xóa phim này"
+            });
         }
 
-        // Delete related showtimes
-        await Showtime.deleteMany({ movie: id }, { session });
+        // Xóa các lịch chiếu liên quan
+        const deletedShowtimes = await Showtime.deleteMany({ movie: id }).session(session);
+        console.log(`Đã xóa ${deletedShowtimes.deletedCount} lịch chiếu liên quan`);
 
-        // Remove movie from admin's addedMovies
-        await Admin.findByIdAndUpdate(
+        // Xóa phim khỏi danh sách phim đã thêm của admin
+        const admin = await Admin.findByIdAndUpdate(
             adminId,
             { $pull: { addedMovies: id } },
-            { session }
+            { session, new: true }
         );
 
-        // Delete the movie
+        if (!admin) {
+            await session.abortTransaction();
+            return res.status(404).json({
+                success: false,
+                message: "Không tìm thấy admin"
+            });
+        }
+
+        // Xóa phim
         await movie.deleteOne({ session });
 
+        // Hoàn tất transaction
         await session.commitTransaction();
 
         return res.status(200).json({
-            message: "Movie and related showtimes deleted successfully"
+            success: true,
+            message: "Phim và các dữ liệu liên quan đã được xóa thành công"
         });
     } catch (err) {
         await session.abortTransaction();
+        console.error("Error deleting movie:", err);
         return res.status(500).json({
-            message: "Error deleting movie",
+            success: false,
+            message: "Lỗi khi xóa phim",
             error: err.message
         });
+    } finally {
+        session.endSession();
     }
 };

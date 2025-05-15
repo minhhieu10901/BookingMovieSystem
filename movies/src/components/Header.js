@@ -62,11 +62,18 @@ const Header = () => {
         } else {
             navigate("/user");
         }
+        handleCloseUserMenu();
+    };
+
+    const handleDashboard = () => {
+        navigate("/dashboard");
+        handleCloseUserMenu();
     };
 
     const getNavItems = () => {
         if (isAdminLoggedIn) {
             return [
+                { label: 'Dashboard', path: '/dashboard' },
                 { label: 'Add Movie', path: '/add' },
                 { label: 'Profile', path: '/user-admin' },
             ];
@@ -75,7 +82,6 @@ const Header = () => {
             ];
         } else {
             return [
-
                 { label: 'Auth', path: '/auth' },
                 { label: 'Admin', path: '/admin' },
             ];
@@ -248,6 +254,11 @@ const Header = () => {
                                 <MenuItem onClick={handleProfile}>
                                     <Typography textAlign="center">Profile</Typography>
                                 </MenuItem>
+                                {isAdminLoggedIn && (
+                                    <MenuItem onClick={handleDashboard}>
+                                        <Typography textAlign="center">Dashboard</Typography>
+                                    </MenuItem>
+                                )}
                             </Menu>
                         </Box>
                     )}
