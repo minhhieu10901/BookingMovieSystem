@@ -1,7 +1,6 @@
 import Showtime from "../models/Showtime.js";
 import Movie from "../models/Movie.js";
 import Room from "../models/Room.js";
-import Seat from "../models/Seat.js";
 import mongoose from "mongoose";
 
 export const addShowtime = async (req, res) => {
@@ -254,34 +253,5 @@ export const deleteShowtime = async (req, res, next) => {
             message: "Error deleting showtime",
             error: err.message
         });
-    }
-};
-
-export const getSeatsByShowtime = async (req, res, next) => {
-    const { showtimeId } = req.params;
-    try {
-        // Lấy thông tin suất chiếu
-        const showtime = await Showtime.findById(showtimeId).populate('room');
-        if (!showtime) {
-            return res.status(404).json({ message: "Showtime not found" });
-        }
-        // Lấy danh sách ghế của phòng chiếu
-        const seats = await Seat.find({ room: showtime.room._id }).sort({ row: 1, column: 1 });
-        // Đánh dấu trạng thái ghế dựa vào bookedSeats
-        const bookedSeatIds = showtime.bookedSeats.map(id => id.toString());
-        const seatList = seats.map(seat => ({
-            _id: seat._id,
-            seatNumber: seat.seatNumber,
-            row: seat.row,
-            column: seat.column,
-            type: seat.type,
-            status: bookedSeatIds.includes(seat._id.toString()) ? 'booked' : seat.status
-        }));
-        return res.status(200).json({
-            room: showtime.room.name,
-            seats: seatList
-        });
-    } catch (err) {
-        return res.status(500).json({ message: "Error fetching seats by showtime", error: err.message });
     }
 }; 

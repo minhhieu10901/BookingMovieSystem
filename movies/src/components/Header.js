@@ -56,21 +56,26 @@ const Header = () => {
         handleCloseUserMenu();
     };
 
+    const handleProfile = () => {
+        if (isAdminLoggedIn) {
+            navigate("/user-admin");
+        } else {
+            navigate("/user");
+        }
+    };
+
     const getNavItems = () => {
         if (isAdminLoggedIn) {
             return [
-                { label: 'Movies', path: '/movies' },
                 { label: 'Add Movie', path: '/add' },
                 { label: 'Profile', path: '/user-admin' },
             ];
         } else if (isUserLoggedIn) {
             return [
-                { label: 'Movies', path: '/movies' },
-                { label: 'Profile', path: '/user' },
             ];
         } else {
             return [
-                { label: 'Movies', path: '/movies' },
+
                 { label: 'Auth', path: '/auth' },
                 { label: 'Admin', path: '/admin' },
             ];
@@ -239,6 +244,9 @@ const Header = () => {
                             >
                                 <MenuItem onClick={handleLogout}>
                                     <Typography textAlign="center">Logout</Typography>
+                                </MenuItem>
+                                <MenuItem onClick={handleProfile}>
+                                    <Typography textAlign="center">Profile</Typography>
                                 </MenuItem>
                             </Menu>
                         </Box>

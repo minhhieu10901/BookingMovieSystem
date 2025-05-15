@@ -189,7 +189,7 @@ export const getMovieById = async (req, res, next) => {
 
 export const updateMovie = async (req, res, next) => {
     try {
-        const { id } = req.params.id;
+        const { id } = req.params;
 
         // Check if request body exists
         if (!req.body) {
@@ -202,7 +202,6 @@ export const updateMovie = async (req, res, next) => {
             actors,
             director,
             duration,
-            language,
             genre,
             releaseDate,
             endDate,
@@ -214,10 +213,10 @@ export const updateMovie = async (req, res, next) => {
         } = req.body;
 
         // Validate required fields
-        if (!title || !description || !director || !duration || !language || !genre || !releaseDate) {
+        if (!title || !description || !director || !duration || !genre || !releaseDate) {
             return res.status(422).json({
                 message: "Missing required fields",
-                required: ["title", "description", "director", "duration", "language", "genre", "releaseDate"]
+                required: ["title", "description", "director", "duration", "genre", "releaseDate"]
             });
         }
 
@@ -247,7 +246,6 @@ export const updateMovie = async (req, res, next) => {
             description,
             director,
             duration,
-            language,
             genre,
             releaseDate: new Date(releaseDate),
             posterUrl,

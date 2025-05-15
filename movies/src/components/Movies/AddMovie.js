@@ -1,104 +1,139 @@
-import { Box, Button, Checkbox, FormLabel, TextField, Typography } from '@mui/material'
-import React, { useState } from 'react'
-import { addMovie } from '../../api-helpers/api-helpers'
-const labelProps = {
-    mt: 1,
-    mb: 1
-}
+import { Box, Button, Checkbox, FormLabel, TextField, Typography, Select, MenuItem, Chip, Snackbar } from '@mui/material';
+import React, { useState } from 'react';
+import { addMovie } from '../../api-helpers/api-helpers';
+
+
+const genres = ['Action', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller'];
+
 const AddMovie = () => {
     const [inputs, setInputs] = useState({
         title: "",
         description: "",
         posterUrl: "",
+        trailerUrl: "",
         releaseDate: "",
+        endDate: "",
+        director: "",
+        duration: "",
+        language: "",
+        genre: "",
+        rating: "",
+        status: "coming_soon",
         featured: false
-    })
+    });
+
     const [actors, setActors] = useState([]);
     const [actor, setActor] = useState("");
+
     const handleChange = (e) => {
         setInputs((prevState) => ({
             ...prevState,
             [e.target.name]: e.target.value,
         }));
     };
+
+    const handleActorAdd = () => {
+        if (actor.trim() && !actors.includes(actor)) {
+            setActors([...actors, actor]);
+            setActor("");
+        }
+    };
+    const [openSnackbar, setOpenSnackbar] = useState(false);
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!inputs.title.trim() || !inputs.description.trim() || !inputs.posterUrl.trim()) {
+        if (!inputs.title.trim() || !inputs.description.trim() || !inputs.posterUrl.trim() || !inputs.director.trim() || !inputs.duration.trim()) {
             console.error("Missing required fields");
             return;
         }
-        if (actors.length === 0 || actors.some(actor => !actor.trim())) {
-            console.error("Actors list is invalid");
+        if (actors.length === 0) {
+            console.error("Actors list cannot be empty");
+            return;
+        }
+        if (inputs.rating < 0 || inputs.rating > 10) {
+            console.error("Rating must be between 0 and 10");
             return;
         }
 
-        console.log(inputs, actors);
         addMovie({ ...inputs, actors })
-            .then((res) => console.log(res))
-            .catch((err) => console.log(err));
-    }
+        .then((res) => {
+            if (res) {
+                setOpenSnackbar(true); // Hiển thị thông báo
+                console.log("✅ Movie added successfully!", res);
+            } else {
+                console.error("❌ Failed to add movie!");
+            }
+        })
+        .catch((err) => console.error("❌ API Error:", err));
+    };
 
     return (
-        <div>
+        <Box width="60%" padding={5} margin="auto" boxShadow="10px 10px 20px #ccc">
+            <Typography textAlign="center" variant="h5" fontFamily="verdana">
+                Add New Movie
+            </Typography>
             <form onSubmit={handleSubmit}>
-                <Box
-                    width={"50%"}
-                    padding={10}
-                    margin={"auto"}
-                    display={"flex"}
-                    flexDirection={"column"}
-                    boxShadow={"10px 10px 20px #ccc"}>
-                    <Typography textAlign={"center"} variant={"h5"} fontFamily={"verdana"} >
-                        Add New Movie
-                    </Typography>
-                    <FormLabel sx={{ labelProps }}>Title</FormLabel>
-                    <TextField value={inputs.title} onChange={handleChange} name="title" variant="standard" margin="normal"></TextField>
-                    <FormLabel sx={{ labelProps }}>Description</FormLabel>
-                    <TextField value={inputs.description} onChange={handleChange} name="description" variant="standard" margin="normal"></TextField>
-                    <FormLabel sx={{ labelProps }}>Poster URL</FormLabel>
-                    <TextField value={inputs.posterUrl} onChange={handleChange} name="posterUrl" variant="standard" margin="normal"></TextField>
-                    <FormLabel sx={{ labelProps }}>ReleaseDate</FormLabel>
-                    <TextField type="date" value={inputs.releaseDate} onChange={handleChange} name="releaseDate" variant="standard" margin="normal"></TextField>
-                    <FormLabel sx={{ labelProps }}>Actors</FormLabel>
-                    <Box>
-                        <TextField
-                            value={actor}
-                            onChange={(e) => setActor(e.target.value)}
-                            name="actors"
-                            variant="standard"
-                            margin="normal" />
-                        <Button onClick={() => {
-                            setActors([...actors, actor]);
-                            setActor("")
-                        }}>Add</Button>
+                {['title', 'description', 'posterUrl', 'trailerUrl', 'director'].map((field) => (
+                    <Box key={field}>
+                        <FormLabel>{field.charAt(0).toUpperCase() + field.slice(1)}</FormLabel>
+                        <TextField value={inputs[field]} onChange={handleChange} name={field} variant="standard" fullWidth margin="normal" />
                     </Box>
+                ))}
 
-                    <FormLabel sx={{ labelProps }}>
-                        Featured
-                    </FormLabel>
-                    <Checkbox
-                        name="featured"
-                        checked={inputs.featured}
-                        onClick={(e) => setInputs((prevState) => ({ ...prevState, featured: e.target.checked }))}
-                        sx={{ mr: "auto" }} />
-                    <Button type="submit" variant="contained" sx={{
-                        margin: "auto", 
-                        borderRadius: 4, 
-                        fontSize: 20, 
-                        width: "30%",
-                        bgcolor: "#2d2b42", 
-                        ":hover": {
-                            backgroundColor: "#121217"
-                        },
-                    }}>
-                        Add Movie
-                    </Button>
+                <FormLabel>Duration (minutes)</FormLabel>
+                <TextField type="number" value={inputs.duration} onChange={handleChange} name="duration" variant="standard" fullWidth margin="normal" />
 
+                <FormLabel>Language</FormLabel>
+                <TextField value={inputs.language} onChange={handleChange} name="language" variant="standard" fullWidth margin="normal" />
 
+                <FormLabel>Genre</FormLabel>
+                <Select value={inputs.genre} onChange={handleChange} name="genre" fullWidth variant="standard">
+                    {genres.map((g) => (
+                        <MenuItem key={g} value={g}>{g}</MenuItem>
+                    ))}
+                </Select>
+
+                <FormLabel>Release Date</FormLabel>
+                <TextField type="date" value={inputs.releaseDate} onChange={handleChange} name="releaseDate" variant="standard" fullWidth margin="normal" />
+
+                <FormLabel>End Date</FormLabel>
+                <TextField type="date" value={inputs.endDate} onChange={handleChange} name="endDate" variant="standard" fullWidth margin="normal" />
+
+                <FormLabel>Actors</FormLabel>
+                <Box display="flex">
+                    <TextField value={actor} onChange={(e) => setActor(e.target.value)} variant="standard" fullWidth margin="normal" />
+                    <Button onClick={handleActorAdd}>Add</Button>
                 </Box>
-            </form>
-        </div>
-    )
-}
+                <Box display="flex" flexWrap="wrap">
+                    {actors.map((a, index) => (
+                        <Chip key={index} label={a} onDelete={() => setActors(actors.filter((actor) => actor !== a))} sx={{ m: 0.5 }} />
+                    ))}
+                </Box>
 
-export default AddMovie
+                <FormLabel>Rating (0-10)</FormLabel>
+                <TextField type="number" value={inputs.rating} onChange={handleChange} name="rating" variant="standard" fullWidth margin="normal" />
+
+                <FormLabel>Status</FormLabel>
+                <Select value={inputs.status} onChange={handleChange} name="status" fullWidth variant="standard">
+                    <MenuItem value="coming_soon">Coming Soon</MenuItem>
+                    <MenuItem value="now_showing">Now Showing</MenuItem>
+                    <MenuItem value="ended">Ended</MenuItem>
+                </Select>
+
+                <FormLabel>Featured</FormLabel>
+                <Checkbox name="featured" checked={inputs.featured} onClick={(e) => setInputs((prevState) => ({ ...prevState, featured: e.target.checked }))} />
+
+                <Button type="submit" variant="contained" sx={{ mt: 2, width: "100%", bgcolor: "#2d2b42", ":hover": { backgroundColor: "#121217" } }}>
+                    Add Movie
+                </Button>
+            </form>
+            <Snackbar
+                open={openSnackbar}
+                autoHideDuration={3000}
+                onClose={() => setOpenSnackbar(false)}
+                message="✅ Movie added successfully!"
+            />
+        </Box>
+    );
+};
+
+export default AddMovie;

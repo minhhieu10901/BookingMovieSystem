@@ -37,7 +37,17 @@ const UserProfile = () => {
                         textAlign={"center"}
                         border={"1px solid #ccc"}
                         borderRadius={4}>
-                        {user.name}
+                        <b>ID:</b> {user._id}
+                    </Typography>
+                    <Typography
+                        padding={1}
+                        width={"auto"}
+                        textAlign={"center"}
+                        border={"1px solid #ccc"}
+                        borderRadius={4}
+                        mt={2}
+                    >
+                        <b>Name:</b> {user.name}
                     </Typography>
                     <Typography
                         mt={2}
@@ -46,12 +56,34 @@ const UserProfile = () => {
                         textAlign={"center"}
                         border={"1px solid #ccc"}
                         borderRadius={4}>
-                        {user.email}
+                        <b>Email:</b> {user.email}
                     </Typography>
+                    {user.createdAt && (
+                        <Typography
+                            mt={2}
+                            padding={1}
+                            width={"auto"}
+                            textAlign={"center"}
+                            border={"1px solid #ccc"}
+                            borderRadius={4}>
+                            <b>Created At:</b> {new Date(user.createdAt).toLocaleDateString()}
+                        </Typography>
+                    )}
+                    {user.role && (
+                        <Typography
+                            mt={2}
+                            padding={1}
+                            width={"auto"}
+                            textAlign={"center"}
+                            border={"1px solid #ccc"}
+                            borderRadius={4}>
+                            <b>Role:</b> {user.role}
+                        </Typography>
+                    )}
                 </Box>
             )}
             {bookings &&
-             (bookings.length > 0) &&
+                (bookings.length > 0) &&
                 (
                     <Box width={"70%"} display={"flex"} flexDirection={"column"} >
                         <Typography variant="h3" fontFamily={"verda"} textAlign={"center"} padding={2}>

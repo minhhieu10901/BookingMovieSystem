@@ -5,8 +5,7 @@ import {
     getShowtimesByMovie,
     getShowtimesByRoom,
     updateShowtime,
-    deleteShowtime,
-    getSeatsByShowtime
+    deleteShowtime
 } from '../controllers/showtime-controller.js';
 import { verifyToken } from '../middleware/auth.js';
 
@@ -16,7 +15,6 @@ const showtimeRouter = express.Router();
 showtimeRouter.get("/movie/:movieId", getShowtimesByMovie); // Get showtimes by movie
 showtimeRouter.get("/room/:roomId", getShowtimesByRoom); // Get showtimes by room
 showtimeRouter.get("/:id", getShowtimeById); // Get showtime by ID
-showtimeRouter.get("/:showtimeId/seats", getSeatsByShowtime);
 
 // Protected routes - Admin only
 showtimeRouter.post("/", verifyToken, addShowtime); // Add new showtime

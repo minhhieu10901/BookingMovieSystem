@@ -1,25 +1,24 @@
 import axios from 'axios';
 export const getAllMovies = async () => {
     const res = await axios
-        .get("/movie")
+        .get("/api/movies")
         .catch((err) => console.log(err));
-    if (res.status !== 200) {
+    if (!res || res.status !== 200) {
         return console.log("No data found");
     }
     const data = await res.data;
     return data;
-
 };
 
 export const sendUserAuthRequest = async (data, signup) => {
     const res = await axios
-        .post(`/user/${signup ? "signup" : "login"}`, {
+        .post(`/api/users/${signup ? "signup" : "login"}`, {
             name: signup ? data.name : "",
             email: data.email,
             password: data.password,
         })
         .catch((err) => console.log(err));
-    if (res.status !== 200 && res.status !== 201) {
+    if (!res || (res.status !== 200 && res.status !== 201)) {
         return console.log("No data found");
     }
     const resData = await res.data;
@@ -27,12 +26,12 @@ export const sendUserAuthRequest = async (data, signup) => {
 }
 export const sendAdminAuthRequest = async (data, signup) => {
     const res = await axios
-        .post(`/admin/login`, {
+        .post(`/api/admin/login`, {
             email: data.email,
             password: data.password,
         })
         .catch((err) => console.log(err));
-    if (res.status !== 200 && res.status !== 201) {
+    if (!res || (res.status !== 200 && res.status !== 201)) {
         return console.log("No data found");
     }
     const resData = await res.data;
@@ -40,24 +39,25 @@ export const sendAdminAuthRequest = async (data, signup) => {
 }
 
 export const getMovieDetails = async (id) => {
-    const res = await axios.get(`/movie/${id}`)
+    const res = await axios.get(`/api/movies/${id}`)
         .catch((err) => console.log(err));
 
-    if (res.status !== 200) {
+    if (!res || res.status !== 200) {
         return console.log("No data found");
     }
     const resData = await res.data;
     return resData;
 }
+
 export const newBooking = async (data) => {
-    const res = await axios.post("/booking", {
+    const res = await axios.post("/api/bookings", {
         movie: data.movie,
         seatNumber: data.seatNumber,
         date: data.date,
         user: localStorage.getItem("userId"),
     })
         .catch((err) => console.log(err));
-    if (res.status !== 201) {
+    if (!res || res.status !== 201) {
         return console.log("No data found");
     }
     const resData = await res.data;
@@ -65,12 +65,16 @@ export const newBooking = async (data) => {
 }
 
 export const getUserBookings = async () => {
-    const id = localStorage.getItem("userId")
+    const id = localStorage.getItem("userId");
+    if (!id) {
+        console.error("No userId found in localStorage");
+        return { bookings: [] };
+    }
     const res = await axios
-        .get(`/user/bookings/${id}`)
+        .get(`/api/users/bookings/${id}`)
         .catch((err) => console.log(err));
-    if (res.status !== 200) {
-        return console.log("No data found");
+    if (!res || res.status !== 200) {
+        return { bookings: [] };
     }
     const resData = await res.data;
     return resData;
@@ -78,21 +82,30 @@ export const getUserBookings = async () => {
 
 export const deleteBooking = async (id) => {
     const res = await axios
-        .delete(`/booking/${id}`)
+        .delete(`/api/bookings/${id}`)
         .catch((err) => console.log(err));
-    if (res.status !== 200) {
+    if (!res || res.status !== 200) {
         return console.log("No data found");
     }
     const resData = await res.data;
     return resData;
 }
-
+export const deleteMovie = async (id) => {
+    const res = await axios
+        .delete(`/api/movies/${id}`)
+        .catch((err) => console.log(err));
+    if (!res || res.status !== 200) {
+        return console.log("No data found");
+    }
+    const resData = await res.data;
+    return resData;
+}
 export const getUserDetails = async () => {
     const id = localStorage.getItem("userId")
     const res = await axios
-        .get(`/user/${id}`)
+        .get(`/api/users/${id}`)
         .catch((err) => console.log(err));
-    if (res.status !== 200) {
+    if (!res || res.status !== 200) {
         return console.log("No data found");
     }
     const resData = await res.data;
@@ -100,35 +113,42 @@ export const getUserDetails = async () => {
 }
 
 export const addMovie = async (data) => {
-    const res = await axios.post("/movie", {
-        title: data.title,
-        description: data.description,
-        releaseDate: data.releaseDate,
-        posterUrl: data.posterUrl,
-        featured: data.featured,
-        actors: data.actors,
-        admin: localStorage.getItem("adminId"),
-    }, {
-        headers: {
-            Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-        }
+    try {
+        const res = await axios.post("/api/movies", {
+            title: data.title,
+            description: data.description,
+            releaseDate: data.releaseDate,
+            endDate: data.endDate,
+            posterUrl: data.posterUrl,
+            trailerUrl: data.trailerUrl,
+            featured: data.featured,
+            director: data.director,
+            duration: data.duration,
+            language: data.language,
+            genre: data.genre,
+            rating: data.rating,
+            status: data.status,
+            actors: data.actors,
+            admin: localStorage.getItem("adminId"),
+        }, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        return res.data;
+    } catch (err) {
+        console.error("Error adding movie:", err.response?.data || err.message);
+        return null;
     }
-    ).catch((err) => {
-        console.error(err);
-        return null; // Trả về giá trị null để tránh lỗi tiếp theo
-    });
-    if (res.status !== 201) {
-        return console.log("Unexpected Error Occurred")
-    }
-    const resData = await res.data;
-    return resData;
-}
+};
+
 export const getAdminById = async () => {
     const adminId = localStorage.getItem("adminId");
     const res = await axios
-        .get(`/admin/${adminId}`)
+        .get(`/api/admin/${adminId}`)
         .catch((err) => console.log(err));
-    if (res.status !== 200) {
+    if (!res || res.status !== 200) {
         return console.log("Unexpected Error Occurred")
     }
     const resData = await res.data;
@@ -137,7 +157,7 @@ export const getAdminById = async () => {
 }
 
 export const addShowtime = async (data) => {
-    const res = await axios.post("/showtime", {
+    const res = await axios.post("/api/showtimes", {
         movie: data.movie,
         date: data.date,
         time: data.time,
@@ -145,7 +165,7 @@ export const addShowtime = async (data) => {
         price: data.price,
     })
         .catch((err) => console.log(err));
-    if (res.status !== 201) {
+    if (!res || res.status !== 201) {
         return console.log("No data found");
     }
     const resData = await res.data;
@@ -154,9 +174,9 @@ export const addShowtime = async (data) => {
 
 export const getShowtimesByMovie = async (movieId) => {
     const res = await axios
-        .get(`/showtime/movie/${movieId}`)
+        .get(`/api/showtimes/movie/${movieId}`)
         .catch((err) => console.log(err));
-    if (res.status !== 200) {
+    if (!res || res.status !== 200) {
         return console.log("No data found");
     }
     const resData = await res.data;
@@ -165,9 +185,9 @@ export const getShowtimesByMovie = async (movieId) => {
 
 export const updateShowtime = async (id, data) => {
     const res = await axios
-        .put(`/showtime/${id}`, data)
+        .put(`/api/showtimes/${id}`, data)
         .catch((err) => console.log(err));
-    if (res.status !== 200) {
+    if (!res || res.status !== 200) {
         return console.log("No data found");
     }
     const resData = await res.data;
@@ -176,9 +196,9 @@ export const updateShowtime = async (id, data) => {
 
 export const deleteShowtime = async (id) => {
     const res = await axios
-        .delete(`/showtime/${id}`)
+        .delete(`/api/showtimes/${id}`)
         .catch((err) => console.log(err));
-    if (res.status !== 200) {
+    if (!res || res.status !== 200) {
         return console.log("No data found");
     }
     const resData = await res.data;
