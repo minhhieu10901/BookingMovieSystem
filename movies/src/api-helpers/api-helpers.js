@@ -127,6 +127,25 @@ export const getUserDetails = async () => {
     return resData;
 }
 
+export const getUserById = async (userId) => {
+    try {
+        const res = await axios.get(`/api/users/${userId}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể tải thông tin người dùng");
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching user:", err.response?.data || err.message);
+        return { success: false, message: "Không thể tải thông tin người dùng" };
+    }
+};
+
 export const addMovie = async (data) => {
     try {
         const res = await axios.post("/api/movies", {
@@ -171,52 +190,103 @@ export const getAdminById = async () => {
 }
 
 export const addShowtime = async (data) => {
-    const res = await axios.post("/api/showtimes", {
-        movie: data.movie,
-        date: data.date,
-        time: data.time,
-        screen: data.screen,
-        price: data.price,
-    })
-        .catch((err) => console.log(err));
-    if (!res || res.status !== 201) {
-        return console.log("No data found");
+    try {
+        const res = await axios.post("/api/showtimes", data, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 201) {
+            throw new Error("Không thể thêm suất chiếu");
+        }
+
+        return {
+            success: true,
+            message: "Thêm suất chiếu thành công",
+            showtime: res.data.showtime
+        };
+    } catch (err) {
+        console.error("Error adding showtime:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Thêm suất chiếu thất bại");
     }
-    const resData = await res.data;
-    return resData;
 };
 
-export const getShowtimesByMovie = async (movieId) => {
-    const res = await axios
-        .get(`/api/showtimes/movie/${movieId}`)
-        .catch((err) => console.log(err));
-    if (!res || res.status !== 200) {
-        return console.log("No data found");
+export const getShowtimesByCinema = async (cinemaId, date) => {
+    try {
+        if (!cinemaId) {
+            throw new Error("Vui lòng chọn rạp chiếu");
+        }
+
+        // Kiểm tra và đảm bảo ID có đúng định dạng
+        if (!cinemaId.match(/^[0-9a-fA-F]{24}$/)) {
+            console.error('Invalid cinema ID format:', cinemaId);
+            return { showtimes: [] };
+        }
+
+        let url = `/api/showtimes/cinema/${cinemaId}`;
+        if (date) {
+            const formattedDate = new Date(date).toISOString().split('T')[0];
+            url += `?date=${formattedDate}`;
+        }
+
+        console.log('Calling API:', url); // Debug log
+        const res = await axios.get(url);
+
+        if (res.status !== 200) {
+            throw new Error("Không thể tải danh sách suất chiếu");
+        }
+        return res.data;
+    } catch (err) {
+        console.error('Error fetching showtimes by cinema:', err);
+        // Trả về mảng rỗng thay vì throw lỗi để tránh crash app
+        return { showtimes: [] };
     }
-    const resData = await res.data;
-    return resData;
 };
 
 export const updateShowtime = async (id, data) => {
-    const res = await axios
-        .put(`/api/showtimes/${id}`, data)
-        .catch((err) => console.log(err));
-    if (!res || res.status !== 200) {
-        return console.log("No data found");
+    try {
+        const res = await axios.put(`/api/showtimes/${id}`, data, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể cập nhật suất chiếu");
+        }
+
+        return {
+            success: true,
+            message: "Cập nhật suất chiếu thành công",
+            showtime: res.data.showtime
+        };
+    } catch (err) {
+        console.error("Error updating showtime:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Cập nhật suất chiếu thất bại");
     }
-    const resData = await res.data;
-    return resData;
 };
 
 export const deleteShowtime = async (id) => {
-    const res = await axios
-        .delete(`/api/showtimes/${id}`)
-        .catch((err) => console.log(err));
-    if (!res || res.status !== 200) {
-        return console.log("No data found");
+    try {
+        const res = await axios.delete(`/api/showtimes/${id}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể xóa suất chiếu");
+        }
+
+        return {
+            success: true,
+            message: "Xóa suất chiếu thành công"
+        };
+    } catch (err) {
+        console.error("Error deleting showtime:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Xóa suất chiếu thất bại");
     }
-    const resData = await res.data;
-    return resData;
 };
 
 export const updateMovie = async (id, data) => {
@@ -371,5 +441,496 @@ export const deleteCinema = async (id) => {
     } catch (err) {
         console.error("Error deleting cinema:", err.response?.data || err.message);
         throw new Error(err.response?.data?.message || "Xóa rạp chiếu thất bại");
+    }
+};
+
+// Room APIs
+export const getAllRooms = async () => {
+    try {
+        const res = await axios.get("/api/rooms");
+        if (res.status !== 200) {
+            throw new Error("Không thể tải danh sách phòng chiếu");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching rooms:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Không thể tải danh sách phòng chiếu");
+    }
+};
+
+export const getRoomsByCinema = async (cinemaId) => {
+    try {
+        const res = await axios.get(`/api/rooms/cinema/${cinemaId}`);
+        if (res.status !== 200) {
+            throw new Error("Không thể tải danh sách phòng chiếu");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching rooms by cinema:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Không thể tải danh sách phòng chiếu");
+    }
+};
+
+export const getRoomById = async (id) => {
+    try {
+        const res = await axios.get(`/api/rooms/${id}`);
+        if (res.status !== 200) {
+            throw new Error("Không thể tải thông tin phòng chiếu");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching room:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Không thể tải thông tin phòng chiếu");
+    }
+};
+
+export const addRoom = async (data) => {
+    try {
+        const res = await axios.post("/api/rooms", {
+            name: data.name,
+            cinema: data.cinema,
+            type: data.type,
+            features: data.features || [],
+            capacity: data.capacity,
+            status: data.status || 'active',
+        }, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status === 201) {
+            return {
+                success: true,
+                message: "Thêm phòng chiếu thành công",
+                room: res.data.room
+            };
+        } else {
+            return {
+                success: false,
+                message: res.data.message || "Thêm phòng chiếu thất bại"
+            };
+        }
+    } catch (err) {
+        console.error("Error adding room:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Thêm phòng chiếu thất bại");
+    }
+};
+
+export const updateRoom = async (id, data) => {
+    try {
+        const res = await axios.put(`/api/rooms/${id}`, {
+            name: data.name,
+            type: data.type,
+            features: data.features,
+            capacity: data.capacity,
+            status: data.status,
+        }, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status === 200) {
+            return {
+                success: true,
+                message: "Cập nhật phòng chiếu thành công",
+                room: res.data.room
+            };
+        } else {
+            return {
+                success: false,
+                message: res.data.message || "Cập nhật phòng chiếu thất bại"
+            };
+        }
+    } catch (err) {
+        console.error("Error updating room:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Cập nhật phòng chiếu thất bại");
+    }
+};
+
+export const deleteRoom = async (id) => {
+    try {
+        const res = await axios.delete(`/api/rooms/${id}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể xóa phòng chiếu");
+        }
+
+        return {
+            success: true,
+            message: "Xóa phòng chiếu thành công"
+        };
+    } catch (err) {
+        console.error("Error deleting room:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+// Seat Management API functions
+export const getSeatsByRoom = async (roomId, query = {}) => {
+    try {
+        let queryString = Object.keys(query)
+            .filter(key => query[key] !== undefined && query[key] !== '')
+            .map(key => `${key}=${query[key]}`)
+            .join('&');
+
+        const url = `/api/seats/room/${roomId}${queryString ? `?${queryString}` : ''}`;
+        const res = await axios.get(url);
+
+        if (res.status !== 200) {
+            throw new Error("Không thể tải danh sách ghế");
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching seats:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+export const addSeats = async (data) => {
+    try {
+        const res = await axios.post("/api/seats", data, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 201) {
+            throw new Error("Không thể thêm ghế");
+        }
+
+        return {
+            success: true,
+            message: "Thêm ghế thành công",
+            seats: res.data.seats
+        };
+    } catch (err) {
+        console.error("Error adding seats:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+export const updateSeat = async (id, data) => {
+    try {
+        const res = await axios.put(`/api/seats/${id}`, data, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể cập nhật ghế");
+        }
+
+        return {
+            success: true,
+            message: "Cập nhật ghế thành công",
+            seat: res.data.seat
+        };
+    } catch (err) {
+        console.error("Error updating seat:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+export const updateMultipleSeats = async (roomId, seats) => {
+    try {
+        const res = await axios.put(`/api/seats/room/${roomId}/bulk`, { seats }, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể cập nhật ghế");
+        }
+
+        return {
+            success: true,
+            message: "Cập nhật ghế thành công",
+            modifiedCount: res.data.modifiedCount
+        };
+    } catch (err) {
+        console.error("Error updating seats:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+export const deleteSeats = async (roomId) => {
+    try {
+        const res = await axios.delete(`/api/seats/room/${roomId}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể xóa ghế");
+        }
+
+        return {
+            success: true,
+            message: "Xóa ghế thành công"
+        };
+    } catch (err) {
+        console.error("Error deleting seats:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+// Showtime API
+export const getAllShowtimes = async () => {
+    try {
+        const res = await axios.get("/api/showtimes", {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Could not fetch showtimes");
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching showtimes:", err.response?.data || err.message);
+        return { showtimes: [] };
+    }
+};
+
+export const getShowtimesByRoom = async (roomId, date) => {
+    try {
+        if (!roomId) {
+            throw new Error("Vui lòng chọn phòng chiếu");
+        }
+
+        // Kiểm tra và đảm bảo ID có đúng định dạng
+        if (!roomId.match(/^[0-9a-fA-F]{24}$/)) {
+            console.error('Invalid room ID format:', roomId);
+            return { showtimes: [] };
+        }
+
+        let url = `/api/showtimes/room/${roomId}`;
+        if (date) {
+            const formattedDate = new Date(date).toISOString().split('T')[0];
+            url += `?date=${formattedDate}`;
+        }
+
+        console.log('Calling API:', url); // Debug log
+        const res = await axios.get(url);
+
+        if (res.status !== 200) {
+            throw new Error("Không thể tải danh sách suất chiếu");
+        }
+        return res.data;
+    } catch (err) {
+        console.error('Error fetching showtimes by room:', err);
+        // Trả về mảng rỗng thay vì throw lỗi để tránh crash app
+        return { showtimes: [] };
+    }
+};
+
+// Thêm các function API cho quản lý vé
+export const getAllTickets = async () => {
+    try {
+        const res = await axios.get("/api/tickets", {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể tải danh sách vé");
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching tickets:", err.response?.data || err.message);
+        return { tickets: [] };
+    }
+};
+
+export const getTicketById = async (id) => {
+    try {
+        const res = await axios.get(`/api/tickets/${id}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể tải thông tin vé");
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching ticket:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Không thể tải thông tin vé");
+    }
+};
+
+export const addTicket = async (data) => {
+    try {
+        const res = await axios.post("/api/tickets", data, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 201) {
+            throw new Error("Không thể thêm vé mới");
+        }
+
+        return {
+            success: true,
+            message: "Thêm vé thành công",
+            ticket: res.data.ticket
+        };
+    } catch (err) {
+        console.error("Error adding ticket:", err.response?.data || err.message);
+        return {
+            success: false,
+            message: err.response?.data?.message || "Thêm vé thất bại"
+        };
+    }
+};
+
+export const updateTicket = async (id, data) => {
+    try {
+        const res = await axios.put(`/api/tickets/${id}`, data, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể cập nhật vé");
+        }
+
+        return {
+            success: true,
+            message: "Cập nhật vé thành công",
+            ticket: res.data.ticket
+        };
+    } catch (err) {
+        console.error("Error updating ticket:", err.response?.data || err.message);
+        return {
+            success: false,
+            message: err.response?.data?.message || "Cập nhật vé thất bại"
+        };
+    }
+};
+
+export const deleteTicket = async (id) => {
+    try {
+        const res = await axios.delete(`/api/tickets/${id}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể xóa vé");
+        }
+
+        return {
+            success: true,
+            message: "Xóa vé thành công"
+        };
+    } catch (err) {
+        console.error("Error deleting ticket:", err.response?.data || err.message);
+        return {
+            success: false,
+            message: err.response?.data?.message || "Xóa vé thất bại"
+        };
+    }
+};
+
+// Booking Management API functions
+export const getAllBookings = async () => {
+    try {
+        const res = await axios.get("/api/bookings", {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể tải danh sách đặt vé");
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching bookings:", err.response?.data || err.message);
+        return { bookings: [] };
+    }
+};
+
+export const getBookingById = async (id) => {
+    try {
+        const res = await axios.get(`/api/bookings/${id}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể tải thông tin đặt vé");
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching booking:", err.response?.data || err.message);
+        throw new Error(err.response?.data?.message || "Không thể tải thông tin đặt vé");
+    }
+};
+
+export const cancelBooking = async (id) => {
+    try {
+        const res = await axios.post(`/api/bookings/${id}/cancel`, {}, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+
+        if (res.status !== 200) {
+            throw new Error("Không thể hủy đặt vé");
+        }
+
+        return {
+            success: true,
+            message: "Hủy đặt vé thành công",
+            booking: res.data.booking
+        };
+    } catch (err) {
+        console.error("Error cancelling booking:", err.response?.data || err.message);
+        return {
+            success: false,
+            message: err.response?.data?.message || "Hủy đặt vé thất bại"
+        };
+    }
+};
+
+export const fetchShowtimesByMovie = async (movieId) => {
+    try {
+        const res = await axios.get(`/api/showtimes/movie/${movieId}`);
+        return res.data;
+    } catch (err) {
+        console.log("Error fetching movie showtimes:", err);
+    }
+};
+
+export const fetchCinemas = async () => {
+    try {
+        const res = await axios.get('/api/cinemas');
+        return res.data;
+    } catch (err) {
+        console.log("Error fetching cinemas:", err);
     }
 };

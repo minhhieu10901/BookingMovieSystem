@@ -3,6 +3,29 @@ import Cinema from "../models/Cinema.js";
 import Showtime from "../models/Showtime.js";
 import mongoose from "mongoose";
 
+export const getAllRooms = async (req, res, next) => {
+    const { type, status, cinema } = req.query;
+
+    try {
+        // Build query based on filters
+        let query = {};
+        if (type) query.type = type;
+        if (status) query.status = status;
+        if (cinema) query.cinema = cinema;
+
+        const rooms = await Room.find(query)
+            .populate('cinema')
+            .sort({ name: 1 });
+
+        return res.status(200).json({ rooms });
+    } catch (err) {
+        return res.status(500).json({
+            message: "Error fetching rooms",
+            error: err.message
+        });
+    }
+};
+
 export const addRoom = async (req, res, next) => {
     const { name, cinema, type, features, capacity } = req.body;
 

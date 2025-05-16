@@ -17,6 +17,14 @@ import EditMovieForm from "./components/Admin/Movies/EditMovieForm";
 import CinemaManagement from "./components/Admin/Cinemas/CinemaManagement";
 import AddCinemaForm from "./components/Admin/Cinemas/AddCinemaForm";
 import EditCinemaForm from "./components/Admin/Cinemas/EditCinemaForm";
+import RoomManagement from "./components/Admin/Rooms/RoomManagement";
+import AddRoomForm from "./components/Admin/Rooms/AddRoomForm";
+import EditRoomForm from "./components/Admin/Rooms/EditRoomForm";
+import RoomSeatManagement from "./components/Admin/Rooms/SeatManagement";
+import SeatManagement from "./components/Admin/Seats/SeatManagement";
+import ShowtimeManagement from "./components/Admin/Showtimes/ShowtimeManagement";
+import TicketManagement from "./components/Admin/Tickets/TicketManagement";
+import BookingManagement from "./components/Admin/Bookings/BookingManagement";
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Container, Box } from '@mui/material';
 import { theme } from './theme';
@@ -54,11 +62,17 @@ function App() {
             <Route path="/add-cinema" element={<AddCinemaForm />} />
             <Route path="/edit-cinema/:id" element={<EditCinemaForm />} />
 
-            <Route path="/showtimes-management" element={<Dashboard />} />
-            <Route path="/rooms-management" element={<Dashboard />} />
-            <Route path="/seats-management" element={<Dashboard />} />
-            <Route path="/tickets-management" element={<Dashboard />} />
-            <Route path="/bookings-management" element={<Dashboard />} />
+            {/* Quản lý phòng chiếu */}
+            <Route path="/rooms-management" element={<RoomManagement />} />
+            <Route path="/add-room" element={<AddRoomForm />} />
+            <Route path="/edit-room/:id" element={<EditRoomForm />} />
+            <Route path="/seat-management/:roomId" element={<RoomSeatManagement />} />
+
+            {/* Quản lý suất chiếu */}
+            <Route path="/showtimes-management" element={<ShowtimeManagement />} />
+            <Route path="/seats-management" element={<SeatManagement />} />
+            <Route path="/tickets-management" element={<TicketManagement />} />
+            <Route path="/bookings-management" element={<BookingManagement />} />
             <Route path="/payments-management" element={<Dashboard />} />
             <Route path="/accounts-management" element={<Dashboard />} />
           </>

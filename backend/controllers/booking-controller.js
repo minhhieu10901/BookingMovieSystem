@@ -121,8 +121,17 @@ export const getBookingById = async (req, res, next) => {
     const id = req.params.id;
     try {
         const booking = await Booking.findById(id)
-            .populate('user', 'name email')
-            .populate('showtime')
+            .populate('user', 'name email phone')
+            .populate({
+                path: 'showtime',
+                populate: [
+                    { path: 'movie' },
+                    {
+                        path: 'room',
+                        populate: { path: 'cinema' }
+                    }
+                ]
+            })
             .populate('seats')
             .populate({
                 path: 'tickets.ticket',
@@ -143,7 +152,16 @@ export const getUserBookings = async (req, res, next) => {
     const userId = req.params.userId;
     try {
         const bookings = await Booking.find({ user: userId })
-            .populate('showtime')
+            .populate({
+                path: 'showtime',
+                populate: [
+                    { path: 'movie' },
+                    {
+                        path: 'room',
+                        populate: { path: 'cinema' }
+                    }
+                ]
+            })
             .populate('seats')
             .populate({
                 path: 'tickets.ticket',
@@ -165,8 +183,21 @@ export const cancelBooking = async (req, res, next) => {
 
     try {
         const booking = await Booking.findById(id)
-            .populate('showtime')
+            .populate({
+                path: 'showtime',
+                populate: [
+                    { path: 'movie' },
+                    {
+                        path: 'room',
+                        populate: { path: 'cinema' }
+                    }
+                ]
+            })
             .populate('seats')
+            .populate({
+                path: 'tickets.ticket',
+                model: 'Ticket'
+            })
             .populate('payment');
 
         if (!booking) {
@@ -178,8 +209,11 @@ export const cancelBooking = async (req, res, next) => {
         }
 
         // Cập nhật trạng thái booking
-        booking.status = 'cancelled';
-        await booking.save({ session });
+        await Booking.findByIdAndUpdate(
+            id,
+            { $set: { status: 'cancelled' } },
+            { session, runValidators: false }
+        );
 
         // Cập nhật trạng thái payment
         booking.payment.status = 'refunded';
@@ -205,8 +239,21 @@ export const cancelBooking = async (req, res, next) => {
 
         // Lấy lại booking với seats đã cập nhật
         const updatedBooking = await Booking.findById(id)
-            .populate('showtime')
+            .populate({
+                path: 'showtime',
+                populate: [
+                    { path: 'movie' },
+                    {
+                        path: 'room',
+                        populate: { path: 'cinema' }
+                    }
+                ]
+            })
             .populate('seats')
+            .populate({
+                path: 'tickets.ticket',
+                model: 'Ticket'
+            })
             .populate('payment');
 
         return res.status(200).json({
@@ -225,8 +272,17 @@ export const cancelBooking = async (req, res, next) => {
 export const getAllBookings = async (req, res, next) => {
     try {
         const bookings = await Booking.find()
-            .populate('user', 'name email')
-            .populate('showtime')
+            .populate('user', 'name email phone')
+            .populate({
+                path: 'showtime',
+                populate: [
+                    { path: 'movie' },
+                    {
+                        path: 'room',
+                        populate: { path: 'cinema' }
+                    }
+                ]
+            })
             .populate('seats')
             .populate({
                 path: 'tickets.ticket',

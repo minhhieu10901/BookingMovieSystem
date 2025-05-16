@@ -43,10 +43,41 @@ export const addSeats = async (req, res, next) => {
         }));
 
         const createdSeats = await Seat.insertMany(seatDocuments);
+        console.log("Created seats:", JSON.stringify(createdSeats, null, 2));
+
+        // Update room with seat references
+        const seatIds = createdSeats.map(seat => seat._id);
+        console.log("Seat IDs to update room:", JSON.stringify(seatIds, null, 2));
+
+        // First get the current room
+        const currentRoom = await Room.findById(room).lean();
+        console.log("Current room before update:", JSON.stringify(currentRoom, null, 2));
+
+        // Update the room with new seats array
+        const updateResult = await Room.updateOne(
+            { _id: room },
+            { $set: { seats: seatIds } },
+            { new: true, runValidators: true }
+        );
+        console.log("Update result:", JSON.stringify(updateResult, null, 2));
+
+        // Verify the update
+        const updatedRoom = await Room.findById(room).lean();
+        console.log("Updated room after update:", JSON.stringify(updatedRoom, null, 2));
+
+        if (!updatedRoom || !updatedRoom.seats || updatedRoom.seats.length === 0) {
+            console.error("Room update verification failed:", {
+                roomId: room,
+                updateResult,
+                updatedRoom
+            });
+            throw new Error("Failed to update room with seat references");
+        }
 
         return res.status(201).json({
             message: "Seats created successfully",
-            seats: createdSeats
+            seats: createdSeats,
+            room: updatedRoom
         });
     } catch (err) {
         return res.status(500).json({
@@ -164,6 +195,9 @@ export const deleteSeats = async (req, res, next) => {
 
         // Delete all seats for this room
         await Seat.deleteMany({ room: roomId }, { session });
+
+        // Remove seat references from room
+        await Room.findByIdAndUpdate(roomId, { seats: [] }, { session });
 
         await session.commitTransaction();
 

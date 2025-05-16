@@ -2,7 +2,7 @@ import express from 'express';
 import {
     addShowtime,
     getShowtimeById,
-    getShowtimesByMovie,
+    getShowtimesByCinema,
     getShowtimesByRoom,
     updateShowtime,
     deleteShowtime
@@ -12,13 +12,13 @@ import { verifyToken } from '../middleware/auth.js';
 const showtimeRouter = express.Router();
 
 // Public routes
-showtimeRouter.get("/movie/:movieId", getShowtimesByMovie); // Get showtimes by movie
-showtimeRouter.get("/room/:roomId", getShowtimesByRoom); // Get showtimes by room
-showtimeRouter.get("/:id", getShowtimeById); // Get showtime by ID
+showtimeRouter.get("/cinema/:cinemaId", getShowtimesByCinema);
+showtimeRouter.get("/room/:roomId", getShowtimesByRoom);
+showtimeRouter.get("/:id", getShowtimeById);
 
 // Protected routes - Admin only
-showtimeRouter.post("/", verifyToken, addShowtime); // Add new showtime
-showtimeRouter.put("/:id", verifyToken, updateShowtime); // Update showtime
-showtimeRouter.delete("/:id", verifyToken, deleteShowtime); // Delete showtime
+showtimeRouter.post("/", verifyToken, addShowtime);
+showtimeRouter.put("/:id", verifyToken, updateShowtime);
+showtimeRouter.delete("/:id", verifyToken, deleteShowtime);
 
 export default showtimeRouter; 

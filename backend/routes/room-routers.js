@@ -4,13 +4,15 @@ import {
     getRoomById,
     getRoomsByCinema,
     updateRoom,
-    deleteRoom
+    deleteRoom,
+    getAllRooms
 } from '../controllers/room-controller.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const roomRouter = express.Router();
 
 // Public routes
+roomRouter.get("/", getAllRooms); // Get all rooms
 roomRouter.get("/cinema/:cinemaId", getRoomsByCinema); // Get rooms by cinema
 roomRouter.get("/:id", getRoomById); // Get room by ID
 
