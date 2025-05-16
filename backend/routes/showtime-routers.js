@@ -5,7 +5,8 @@ import {
     getShowtimesByCinema,
     getShowtimesByRoom,
     updateShowtime,
-    deleteShowtime
+    deleteShowtime,
+    getAllShowtimes
 } from '../controllers/showtime-controller.js';
 import { verifyToken } from '../middleware/auth.js';
 
@@ -13,6 +14,7 @@ const showtimeRouter = express.Router();
 
 // Public routes
 showtimeRouter.get("/cinema/:cinemaId", getShowtimesByCinema);
+showtimeRouter.get("/", getAllShowtimes);
 showtimeRouter.get("/room/:roomId", getShowtimesByRoom);
 showtimeRouter.get("/:id", getShowtimeById);
 

@@ -4,6 +4,8 @@ import mongoose from "mongoose";
 import Admin from "../models/Admin.js";
 import Showtime from "../models/Showtime.js";
 
+
+
 export const addMovie = async (req, res, next) => {
     try {
         // Check if request body exists
@@ -49,7 +51,6 @@ export const addMovie = async (req, res, next) => {
             actors,
             director,
             duration,
-            language,
             genre,
             releaseDate,
             endDate,
@@ -61,11 +62,11 @@ export const addMovie = async (req, res, next) => {
         } = req.body;
 
         // Validate required fields
-        if (!title || !description || !posterUrl || !director || !duration || !language || !genre || !releaseDate) {
+        if (!title || !description || !posterUrl || !director || !duration  || !genre || !releaseDate) {
             return res.status(422).json({
                 success: false,
                 message: "Missing required fields",
-                required: ["title", "description", "posterUrl", "director", "duration", "language", "genre", "releaseDate"]
+                required: ["title", "description", "posterUrl", "director", "duration", "genre", "releaseDate"]
             });
         }
 
@@ -91,7 +92,6 @@ export const addMovie = async (req, res, next) => {
             actors,
             director,
             duration,
-            language,
             genre,
             releaseDate: new Date(releaseDate),
             endDate: endDate ? new Date(endDate) : undefined,
@@ -134,16 +134,77 @@ export const addMovie = async (req, res, next) => {
         });
     }
 };
+export const get3MoviesMostBooked = async (req, res, next) => {
+    try {
+        const movies = await Movie.find({
+            status: 'now_showing'
+        })
+            .sort({ bookingCount: -1 })
+            .limit(3)
+            .select('title description posterUrl releaseDate status rating bookingCount');
+
+        if (!movies || movies.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No movies found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Successfully retrieved most booked movies",
+            count: movies.length,
+            movies: movies
+        });
+    } catch (err) {
+        console.error("Error fetching most booked movies:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching movies",
+            error: err.message
+        });
+    }
+}
+export const getLatestMovies = async (req, res, next) => {
+    try {
+        const latestMovies = await Movie.find({
+            status: { $in: ['now_showing', 'coming_soon'] } // Only get active movies
+        })
+            .sort({ releaseDate: -1 }) // Sort by newest release date
+            .limit(3) // Limit to 3 movies
+            .select('title description posterUrl releaseDate status rating'); // Select only necessary fields
+
+        if (!latestMovies || latestMovies.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No movies found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Successfully retrieved latest movies",
+            count: latestMovies.length,
+            movies: latestMovies
+        });
+    } catch (err) {
+        console.error("Error fetching latest movies:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching latest movies",
+            error: err.message
+        });
+    }
+};
 
 export const getAllMovies = async (req, res, next) => {
     try {
-        const { status, genre, language, featured } = req.query;
+        const { status, genre, featured } = req.query;
         let query = {};
 
         // Add filters if provided
         if (status) query.status = status;
         if (genre) query.genre = { $in: [genre] };
-        if (language) query.language = language;
         if (featured) query.featured = featured === 'true';
 
         const movies = await Movie.find(query)
@@ -363,5 +424,45 @@ export const deleteMovie = async (req, res, next) => {
         });
     } finally {
         session.endSession();
+    }
+};
+
+export const getMovieShowtimes = async (req, res, next) => {
+    const { id } = req.params;
+
+    try {
+        // Validate movieId
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid movie ID format" });
+        }
+
+        // Find showtimes for the movie
+        const showtimes = await Showtime.find({ movie: id })
+            .populate("cinema", "name location")
+            .populate("room", "name screenType capacity")
+            .sort({ date: 1, startTime: 1 });
+
+        if (!showtimes || showtimes.length === 0) {
+            return res.status(200).json({ message: "No showtimes found for this movie", showtimes: [] });
+        }
+
+        // Transform data for frontend
+        const transformedShowtimes = showtimes.map(showtime => ({
+            id: showtime._id,
+            date: showtime.date,
+            startTime: showtime.startTime,
+            endTime: showtime.endTime,
+            cinema: showtime.cinema.name,
+            location: showtime.cinema.location,
+            room: showtime.room.name,
+            screenType: showtime.room.screenType,
+            status: showtime.status,
+            bookedSeats: showtime.bookedSeats.length
+        }));
+
+        return res.status(200).json({ showtimes: transformedShowtimes });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error. Please try again." });
     }
 };

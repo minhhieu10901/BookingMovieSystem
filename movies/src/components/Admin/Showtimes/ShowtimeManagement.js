@@ -25,7 +25,10 @@ import {
     Typography,
     Alert,
     CircularProgress,
-    Divider
+    Divider,
+    InputAdornment,
+    IconButton,
+    DialogContentText
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
@@ -33,6 +36,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { vi } from 'date-fns/locale';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import AdminLayout from '../AdminLayout';
 import {
     getAllCinemas,
@@ -40,7 +44,8 @@ import {
     getAllMovies,
     getRoomsByCinema,
     getShowtimesByRoom,
-    addShowtime
+    addShowtime,
+    deleteShowtime
 } from '../../../api-helpers/api-helpers';
 import { format, isSameDay, addHours, setHours, setMinutes } from 'date-fns';
 
@@ -88,6 +93,11 @@ const ShowtimeManagement = () => {
         message: '',
         severity: 'success',
     });
+
+    // Thêm state cho chức năng xóa
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [showtimeToDelete, setShowtimeToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Fetch danh sách rạp chiếu
     const fetchCinemas = async () => {
@@ -237,6 +247,9 @@ const ShowtimeManagement = () => {
 
     // Format time for display
     const formatTime = (timeString) => {
+        if (typeof timeString === 'string' && timeString.includes(':')) {
+            return timeString;
+        }
         const date = new Date(timeString);
         return date.toLocaleTimeString('vi-VN', {
             hour: '2-digit',
@@ -244,9 +257,24 @@ const ShowtimeManagement = () => {
         });
     };
 
+    // Format date for display
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return format(date, 'dd/MM/yyyy');
+    };
+
     // Dialog handlers
     const handleOpenDialog = () => {
         fetchMovies();
+        setFormData({
+            movie: '',
+            cinema: selectedCinema || '',
+            room: selectedRoom || '',
+            date: new Date(),
+            startTime: setHours(setMinutes(new Date(), 0), 9),
+            endTime: setHours(setMinutes(new Date(), 0), 11),
+            status: 'scheduled'
+        });
         setOpenDialog(true);
     };
 
@@ -327,27 +355,19 @@ const ShowtimeManagement = () => {
         try {
             setSubmitting(true);
 
-            // Combine date and time for API
-            const combinedStartTime = new Date(formData.date);
-            combinedStartTime.setHours(
-                formData.startTime.getHours(),
-                formData.startTime.getMinutes(),
-                0
-            );
-
-            const combinedEndTime = new Date(formData.date);
-            combinedEndTime.setHours(
-                formData.endTime.getHours(),
-                formData.endTime.getMinutes(),
-                0
-            );
+            // Format time strings for API
+            const formatTimeString = (time) => {
+                const hours = time.getHours().toString().padStart(2, '0');
+                const minutes = time.getMinutes().toString().padStart(2, '0');
+                return `${hours}:${minutes}`;
+            };
 
             const showtimeData = {
                 movie: formData.movie,
                 room: formData.room,
                 date: formData.date,
-                startTime: combinedStartTime,
-                endTime: combinedEndTime,
+                startTime: formatTimeString(formData.startTime),
+                endTime: formatTimeString(formData.endTime),
                 status: formData.status
             };
 
@@ -365,6 +385,38 @@ const ShowtimeManagement = () => {
             showSnackbar(error.message || 'Thêm suất chiếu thất bại', 'error');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    // Thêm handler để xóa suất chiếu
+    const handleDeleteClick = (showtime) => {
+        setShowtimeToDelete(showtime);
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteDialogClose = () => {
+        setDeleteDialogOpen(false);
+        setShowtimeToDelete(null);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!showtimeToDelete) return;
+
+        try {
+            setDeleting(true);
+            await deleteShowtime(showtimeToDelete._id);
+            showSnackbar('Xóa suất chiếu thành công');
+
+            // Refresh danh sách suất chiếu
+            fetchShowtimes();
+
+        } catch (error) {
+            console.error('Error deleting showtime:', error);
+            showSnackbar(error.message || 'Xóa suất chiếu thất bại', 'error');
+        } finally {
+            setDeleting(false);
+            setDeleteDialogOpen(false);
+            setShowtimeToDelete(null);
         }
     };
 
@@ -478,6 +530,7 @@ const ShowtimeManagement = () => {
                                     <TableCell>Giờ chiếu</TableCell>
                                     <TableCell>Ghế đã đặt</TableCell>
                                     <TableCell>Trạng thái</TableCell>
+                                    <TableCell align="center">Thao tác</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -491,6 +544,18 @@ const ShowtimeManagement = () => {
                                             <TableCell>{showtime.bookedSeats?.length || 0}</TableCell>
                                             <TableCell>
                                                 {new Date(showtime.startTime) < new Date() ? 'Đã chiếu' : 'Sắp chiếu'}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <IconButton
+                                                    color="error"
+                                                    onClick={() => handleDeleteClick(showtime)}
+                                                    disabled={showtime.bookedSeats?.length > 0}
+                                                    title={showtime.bookedSeats?.length > 0 ?
+                                                        "Không thể xóa suất chiếu đã có đặt vé" :
+                                                        "Xóa suất chiếu"}
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -682,6 +747,40 @@ const ShowtimeManagement = () => {
                         disabled={submitting}
                     >
                         {submitting ? 'Đang xử lý...' : 'Thêm suất chiếu'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialog xác nhận xóa suất chiếu */}
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={handleDeleteDialogClose}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description"
+            >
+                <DialogTitle id="alert-dialog-title">
+                    Xác nhận xóa suất chiếu
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="alert-dialog-description">
+                        Bạn có chắc chắn muốn xóa suất chiếu phim "{showtimeToDelete?.movie?.title || ''}"
+                        vào lúc {showtimeToDelete ? formatTime(showtimeToDelete.startTime) : ''} không?
+                        <br />
+                        Hành động này không thể hoàn tác.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleDeleteDialogClose} color="primary">
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleDeleteConfirm}
+                        color="error"
+                        variant="contained"
+                        disabled={deleting}
+                        autoFocus
+                    >
+                        {deleting ? 'Đang xóa...' : 'Xóa'}
                     </Button>
                 </DialogActions>
             </Dialog>

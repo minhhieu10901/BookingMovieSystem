@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import Header from "./components/Header";
 import HomePage from "./components/HomePage";
 import Movies from "./components/Movies/Movies";
+import MovieDetails from "./components/Movies/MovieDetails";
 import Admin from "./components/Admin/Admin";
 import Auth from "./components/Auth/Auth";
 import { useDispatch, useSelector } from "react-redux";
@@ -101,6 +102,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/movies" element={<Movies />} />
+                <Route path="/movies/:id" element={<MovieDetails />} />
                 {!isUserLoggedIn && !isAdminLoggedIn && (
                   <>
                     <Route path="/admin" element={<Admin />} />

@@ -26,7 +26,11 @@ const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating 
         }
       }}
     >
-      <Box sx={{ position: 'relative', width: '100%', height: 0, paddingTop: '150%' }}>
+      <Box
+        sx={{ position: 'relative', width: '100%', height: 0, paddingTop: '150%' }}
+        component={Link}
+        to={`/movies/${id}`}
+      >
         <img
           src={posterUrl}
           alt={title}
@@ -55,7 +59,10 @@ const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating 
             backgroundColor: 'rgba(0,0,0,0.5)',
             opacity: 0,
             transition: 'opacity 0.3s ease-in-out',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            '&:hover': {
+              opacity: 1
+            }
           }}
         >
           <PlayCircleOutlineIcon sx={{ fontSize: 60, color: 'white' }} />
@@ -132,7 +139,7 @@ const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating 
           variant='contained'
           fullWidth
           component={Link}
-          to={`/bookings/${id}`}
+          to={`/movies/${id}`}
           sx={{
             py: 0.7,
             backgroundColor: '#2b2d42',
@@ -144,7 +151,7 @@ const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating 
             fontSize: '0.95rem'
           }}
         >
-          Đặt vé
+          Xem chi tiết
         </Button>
       </CardActions>
     </Card>

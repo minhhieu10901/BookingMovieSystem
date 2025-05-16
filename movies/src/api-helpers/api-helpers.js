@@ -161,7 +161,6 @@ export const addMovie = async (data) => {
             rating: data.rating,
             status: data.status,
             actors: data.actors,
-            language: "Unknown",
             admin: localStorage.getItem("adminId"),
         }, {
             headers: {
@@ -304,7 +303,6 @@ export const updateMovie = async (id, data) => {
             rating: data.rating,
             status: data.status,
             actors: data.actors,
-            language: "Unknown",
         }, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
@@ -932,5 +930,20 @@ export const fetchCinemas = async () => {
         return res.data;
     } catch (err) {
         console.log("Error fetching cinemas:", err);
+    }
+};
+
+export const getMovieShowtimes = async (movieId) => {
+    try {
+        const res = await axios.get(`/api/movies/${movieId}/showtimes`);
+        if (res.status !== 200) {
+            return console.log("Unexpected Error");
+        }
+
+        const resData = await res.data;
+        return resData.showtimes;
+    } catch (err) {
+        console.log(err);
+        return [];
     }
 };

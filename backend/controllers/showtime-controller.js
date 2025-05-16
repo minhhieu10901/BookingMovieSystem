@@ -41,10 +41,10 @@ export const addShowtime = async (req, res) => {
     session.startTransaction();
 
     try {
-        const { movie, room, date, startTime, endTime, price } = req.body;
+        const { movie, room, date, startTime, endTime, status } = req.body;
 
         // Validate required fields
-        if (!movie || !room || !date || !startTime || !endTime || !price) {
+        if (!movie || !room || !date || !startTime || !endTime) {
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields"
@@ -70,14 +70,26 @@ export const addShowtime = async (req, res) => {
             });
         }
 
-        // Check for time conflicts
+        // Format times properly
+        const formatTimeString = (timeObject) => {
+            if (typeof timeObject === 'string') {
+                return timeObject;
+            }
+
+            const date = new Date(timeObject);
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        };
+
         const showtimeDate = new Date(date);
+        const formattedStartTime = formatTimeString(startTime);
+        const formattedEndTime = formatTimeString(endTime);
+
         const startDateTime = new Date(showtimeDate);
-        const [startHours, startMinutes] = startTime.split(':');
+        const [startHours, startMinutes] = formattedStartTime.split(':');
         startDateTime.setHours(parseInt(startHours), parseInt(startMinutes), 0, 0);
 
         const endDateTime = new Date(showtimeDate);
-        const [endHours, endMinutes] = endTime.split(':');
+        const [endHours, endMinutes] = formattedEndTime.split(':');
         endDateTime.setHours(parseInt(endHours), parseInt(endMinutes), 0, 0);
 
         // Check if end time is after start time
@@ -91,11 +103,14 @@ export const addShowtime = async (req, res) => {
         // Check for overlapping showtimes
         const overlappingShowtime = await Showtime.findOne({
             room,
-            date: showtimeDate,
+            date: {
+                $gte: new Date(showtimeDate.setHours(0, 0, 0, 0)),
+                $lt: new Date(showtimeDate.setHours(23, 59, 59, 999))
+            },
             $or: [
                 {
-                    startTime: { $lt: endTime },
-                    endTime: { $gt: startTime }
+                    startTime: { $lt: formattedEndTime },
+                    endTime: { $gt: formattedStartTime }
                 }
             ]
         });
@@ -113,10 +128,9 @@ export const addShowtime = async (req, res) => {
             room,
             cinema: existingRoom.cinema._id,
             date: showtimeDate,
-            startTime,
-            endTime,
-            price,
-            status: 'scheduled',
+            startTime: formattedStartTime,
+            endTime: formattedEndTime,
+            status: status || 'scheduled',
             bookedSeats: []
         });
 
@@ -163,7 +177,7 @@ export const updateShowtime = async (req, res) => {
 
     try {
         const { id } = req.params;
-        const { date, startTime, endTime, price, status } = req.body;
+        const { date, startTime, endTime, status } = req.body;
 
         const showtime = await Showtime.findById(id);
         if (!showtime) {
@@ -228,7 +242,6 @@ export const updateShowtime = async (req, res) => {
         if (date) showtime.date = new Date(date);
         if (startTime) showtime.startTime = startTime;
         if (endTime) showtime.endTime = endTime;
-        if (price) showtime.price = price;
         if (status) showtime.status = status;
 
         const updatedShowtime = await showtime.save({ session });
@@ -475,3 +488,15 @@ export const getShowtimesByRoom = async (req, res) => {
         });
     }
 };
+export const getAllShowtimes = async (req, res) => {
+    try {
+        const showtimes = await Showtime.find();
+        res.status(200).json(showtimes);
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching showtimes",
+            error: error.message
+        });
+    }
+}           
