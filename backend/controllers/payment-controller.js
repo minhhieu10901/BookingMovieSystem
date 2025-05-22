@@ -294,14 +294,13 @@ export const getPaymentStats = async (req, res, next) => {
 export const completeUserPayment = async (req, res, next) => {
     try {
         const paymentId = req.params.id;
+        const { userId } = req.body;
 
-        // Check if user is authenticated
-        if (!req.user) {
-            console.error('User not authenticated');
-            return res.status(401).json({ message: 'Bạn cần đăng nhập để thực hiện thanh toán' });
+        // Check if userId is provided in body
+        if (!userId) {
+            console.error('Không có ID người dùng được cung cấp');
+            return res.status(400).json({ message: 'Bạn cần cung cấp ID người dùng để thực hiện thanh toán' });
         }
-
-        const userId = req.user.id;
 
         console.log(`Processing payment completion: ID=${paymentId}, UserID=${userId}`);
 
@@ -328,9 +327,9 @@ export const completeUserPayment = async (req, res, next) => {
                 return res.status(404).json({ message: 'Không tìm thấy thanh toán' });
             }
 
-            // Kiểm tra xem người dùng đã xác thực có phải là chủ sở hữu của payment này không
-            // Đối với admin, bỏ qua kiểm tra này
-            if (!req.user.isAdmin && payment.user && payment.user.toString() !== userId) {
+            // Kiểm tra xem người dùng có phải là chủ sở hữu của payment này không
+            // Trong môi trường production, cần kiểm tra kỹ hơn
+            if (process.env.NODE_ENV === 'production' && payment.user && payment.user.toString() !== userId) {
                 await session.abortTransaction();
                 session.endSession();
                 console.error(`Người dùng ${userId} không có quyền cập nhật thanh toán ${paymentId}`);

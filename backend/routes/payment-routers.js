@@ -16,8 +16,8 @@ paymentRouter.get("/admin/stats", verifyToken, getPaymentStats);
 paymentRouter.get("/admin/:id", verifyToken, getPaymentById);
 paymentRouter.patch("/admin/:id/status", verifyToken, updatePaymentStatus);
 
-// User route - yêu cầu xác thực
-paymentRouter.patch("/complete/:id", verifyToken, completeUserPayment);
+// User route - không yêu cầu xác thực token
+paymentRouter.patch("/complete/:id", completeUserPayment);
 
 // Add a more permissive route that doesn't require token verification for testing
 // This should be removed in production

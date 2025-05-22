@@ -8,11 +8,9 @@ import Movie from "../models/Movie.js";
 import mongoose from "mongoose";
 
 export const newBooking = async (req, res, next) => {
-    const { showtime, seats, tickets, paymentMethod, totalAmount, userId: bodyUserId } = req.body;
+    const { showtime, seats, tickets, paymentMethod, totalAmount, userId } = req.body;
 
-    // Get userId from either authentication token or request body
-    const userId = req.user?.id || bodyUserId;
-
+    // Lấy userId từ request body, không còn dùng req.user
     if (!userId) {
         return res.status(401).json({ message: "Bạn cần đăng nhập để đặt vé" });
     }

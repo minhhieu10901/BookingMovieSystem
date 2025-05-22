@@ -77,14 +77,21 @@ export const getUserBookings = async () => {
         console.error("No userId found in localStorage");
         return { bookings: [] };
     }
-    const res = await axios
-        .get(`/api/users/bookings/${id}`)
-        .catch((err) => console.log(err));
-    if (!res || res.status !== 200) {
+
+    try {
+        console.log("Fetching bookings for user ID:", id);
+        const res = await axios.get(`/api/users/bookings/${id}`);
+
+        if (res.status !== 200) {
+            console.error("Error fetching user bookings, status:", res.status);
+            return { bookings: [] };
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching user bookings:", err);
         return { bookings: [] };
     }
-    const resData = await res.data;
-    return resData;
 }
 
 export const deleteBooking = async (id) => {
@@ -1018,9 +1025,8 @@ export const getSeatsForShowtime = async (showtimeId) => {
 // User booking actions
 export const createBooking = async (bookingData) => {
     try {
-        // Lấy userId và accessToken từ localStorage
+        // Lấy userId từ localStorage
         const userId = localStorage.getItem("userId");
-        const accessToken = localStorage.getItem("accessToken");
 
         if (!userId) {
             console.error("Missing userId in localStorage");
@@ -1032,18 +1038,15 @@ export const createBooking = async (bookingData) => {
         // Thêm userId vào bookingData 
         const completeBookingData = {
             ...bookingData,
-            user: userId
+            user: userId,
+            userId: userId // Thêm userId vào request body
         };
 
         console.log("API - Sending booking data:", JSON.stringify(completeBookingData));
 
-        // Thực hiện POST request với token xác thực
+        // Thực hiện POST request không cần token xác thực
         console.log("API - Calling POST to /api/bookings");
-        const res = await axios.post('/api/bookings', completeBookingData, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`
-            }
-        });
+        const res = await axios.post('/api/bookings', completeBookingData);
 
         console.log("API - POST response status:", res.status);
         console.log("API - POST response data:", res.data);
@@ -1058,12 +1061,6 @@ export const createBooking = async (bookingData) => {
         console.error("API - Error creating booking:", err);
         if (err.response) {
             console.error("API - Error response:", err.response.status, err.response.data);
-            if (err.response.status === 401) {
-                // Token hết hạn hoặc không hợp lệ
-                const error = new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
-                error.requiresAuth = true;
-                throw error;
-            }
         }
         throw err;
     }
@@ -1154,22 +1151,23 @@ export const getPaymentStats = async () => {
 // Complete payment after successful transaction
 export const completePayment = async (paymentId) => {
     try {
-        const accessToken = localStorage.getItem("accessToken");
+        const userId = localStorage.getItem("userId");
 
         if (!paymentId) {
             console.error("ID thanh toán không hợp lệ");
             throw new Error("ID thanh toán không hợp lệ");
         }
 
+        if (!userId) {
+            console.error("Không tìm thấy ID người dùng");
+            throw new Error("Vui lòng đăng nhập để hoàn tất thanh toán");
+        }
+
         console.log("Bắt đầu cập nhật thanh toán ID:", paymentId);
 
         // First try with PATCH request
         try {
-            const res = await axios.patch(`/api/payments/complete/${paymentId}`, {}, {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            });
+            const res = await axios.patch(`/api/payments/complete/${paymentId}`, { userId });
 
             console.log("Phản hồi từ API thanh toán:", res.status, res.data);
 
@@ -1191,7 +1189,7 @@ export const completePayment = async (paymentId) => {
             if (process.env.NODE_ENV !== 'production') {
                 try {
                     console.log("Trying fallback POST request for payment completion");
-                    const fallbackRes = await axios.post(`/api/payments/test/complete/${paymentId}`, {});
+                    const fallbackRes = await axios.post(`/api/payments/test/complete/${paymentId}`, { userId });
 
                     if (fallbackRes.status === 200) {
                         console.log("Fallback payment completion successful:", fallbackRes.data);
@@ -1216,20 +1214,11 @@ export const completePayment = async (paymentId) => {
             message: "Không thể cập nhật trạng thái thanh toán sau nhiều lần thử",
             error: "API errors"
         };
-
     } catch (err) {
         console.error("Lỗi cập nhật thanh toán:", err.response?.data || err.message);
-        if (err.response?.status === 401) {
-            // Token hết hạn hoặc không hợp lệ
-            return {
-                success: false,
-                message: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
-                requiresAuth: true
-            };
-        }
         return {
             success: false,
-            message: err.response?.data?.message || "Cập nhật trạng thái thanh toán thất bại",
+            message: err.message || "Cập nhật trạng thái thanh toán thất bại",
             error: err.response?.data || err.message
         };
     }
