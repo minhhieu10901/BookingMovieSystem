@@ -2,9 +2,10 @@ import { Box, Button, Typography, TextField, Grid, Container, Paper, InputAdornm
 import React, { useEffect, useState } from 'react'
 import MovieItem from './Movies/MovieItem'
 import { Link } from 'react-router-dom'
-import { getAllMovies } from '../api-helpers/api-helpers'
+import { getAllMovies, getMostBookedMovies } from '../api-helpers/api-helpers'
 import SearchIcon from '@mui/icons-material/Search'
 import FilterListIcon from '@mui/icons-material/FilterList'
+import WhatshotIcon from '@mui/icons-material/Whatshot'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination, Autoplay } from 'swiper/modules'
 import 'swiper/css'
@@ -17,6 +18,7 @@ const HomePage = () => {
     const [filteredMovies, setFilteredMovies] = useState([])
     const [nowShowingMovies, setNowShowingMovies] = useState([])
     const [comingSoonMovies, setComingSoonMovies] = useState([])
+    const [mostBookedMovies, setMostBookedMovies] = useState([])
 
     useEffect(() => {
         getAllMovies()
@@ -29,6 +31,15 @@ const HomePage = () => {
                 }
             })
             .catch((err) => console.error("Error fetching movies:", err))
+
+        // Fetch most booked movies
+        getMostBookedMovies()
+            .then((data) => {
+                if (data && data.movies) {
+                    setMostBookedMovies(data.movies)
+                }
+            })
+            .catch((err) => console.error("Error fetching most booked movies:", err))
     }, [])
 
     const handleSearch = (event) => {
@@ -151,6 +162,37 @@ const HomePage = () => {
                     </Grid>
                 </Grid>
             </Paper>
+
+            {/* Most Booked Movies Section */}
+            <Box sx={{ mb: 6, position: 'relative', zIndex: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                    <WhatshotIcon sx={{ color: 'error.main', mr: 1, fontSize: 28 }} />
+                    <Typography variant="h4" sx={{ fontWeight: "bold", color: 'error.main' }}>
+                        Phim Được Đặt Nhiều Nhất
+                    </Typography>
+                </Box>
+                <Grid container spacing={3}>
+                    {mostBookedMovies.length === 0 ? (
+                        <Typography variant="body1" sx={{ ml: 2 }}>Không có dữ liệu phim.</Typography>
+                    ) : (
+                        mostBookedMovies.map((movie) => (
+                            <Grid item xs={12} sm={6} md={4} key={movie._id}>
+                                <MovieItem
+                                    id={movie._id}
+                                    title={movie.title}
+                                    releaseDate={movie.releaseDate}
+                                    posterUrl={movie.posterUrl}
+                                    genre={Array.isArray(movie.genre) ? movie.genre.join(', ') : movie.genre}
+                                    rating={movie.rating}
+                                    duration={movie.duration}
+                                    badge={`Đặt ${movie.bookingCount || 0} lần`}
+                                    highlighted={true}
+                                />
+                            </Grid>
+                        ))
+                    )}
+                </Grid>
+            </Box>
 
             {/* Now Showing Section */}
             <Box sx={{ mb: 6, position: 'relative', zIndex: 2 }}>

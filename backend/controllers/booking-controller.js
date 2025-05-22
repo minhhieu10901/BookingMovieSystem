@@ -4,19 +4,42 @@ import User from "../models/User.js";
 import Seat from "../models/Seat.js";
 import Ticket from "../models/Ticket.js";
 import Payment from "../models/Payment.js";
+import Movie from "../models/Movie.js";
 import mongoose from "mongoose";
 
 export const newBooking = async (req, res, next) => {
-    const { showtime, seats, tickets, paymentMethod } = req.body;
-    const userId = req.body.user || req.user.id;
+    const { showtime, seats, tickets, paymentMethod, totalAmount, userId: bodyUserId } = req.body;
+
+    // Get userId from either authentication token or request body
+    const userId = req.user?.id || bodyUserId;
+
+    if (!userId) {
+        return res.status(401).json({ message: "Bạn cần đăng nhập để đặt vé" });
+    }
+
+    if (!showtime || !seats || !tickets || !paymentMethod) {
+        return res.status(400).json({ message: "Missing required booking information" });
+    }
+
+    console.log("Received booking data:", {
+        userId,
+        showtime,
+        seats: Array.isArray(seats) ? seats.length : 'not array',
+        tickets: Array.isArray(tickets) ? tickets.length : 'not array',
+        paymentMethod
+    });
 
     let existingShowtime, existingUser, existingSeats, existingTickets;
     try {
+        // Kiểm tra xem các entity có tồn tại không
         existingShowtime = await Showtime.findById(showtime);
         existingUser = await User.findById(userId);
         existingSeats = await Seat.find({ _id: { $in: seats } });
-        existingTickets = await Ticket.find({ _id: { $in: tickets.map(t => t.ticket) } });
+        existingTickets = await Ticket.find({ _id: { $in: tickets.map(t => t.ticket).filter(id => id) } });
+
+        console.log(`Found user: ${existingUser?._id}, showtime: ${existingShowtime?._id}, seats: ${existingSeats.length}, tickets: ${existingTickets.length}`);
     } catch (error) {
+        console.error("Error finding resources:", error);
         return res.status(500).json({ message: "Error finding resources", error: error.message });
     }
 
@@ -27,17 +50,17 @@ export const newBooking = async (req, res, next) => {
         return res.status(404).json({ message: "User not found" });
     }
     if (existingSeats.length !== seats.length) {
-        return res.status(404).json({ message: "Some seats not found" });
-    }
-    if (existingTickets.length !== tickets.length) {
-        return res.status(404).json({ message: "Some tickets not found" });
+        return res.status(404).json({ message: `Some seats not found. Expected ${seats.length}, found ${existingSeats.length}` });
     }
 
     // Kiểm tra ghế có sẵn không
     const unavailableSeats = existingSeats.filter(seat =>
         seat.status !== 'available' ||
-        existingShowtime.bookedSeats.includes(seat._id)
+        existingShowtime.bookedSeats.some(
+            bookedId => bookedId.toString() === seat._id.toString()
+        )
     );
+
     if (unavailableSeats.length > 0) {
         return res.status(400).json({
             message: "Some seats are not available",
@@ -45,9 +68,11 @@ export const newBooking = async (req, res, next) => {
         });
     }
 
-    // Tính tổng tiền
-    const totalAmount = tickets.reduce((total, ticket) => {
+    // Tính tổng tiền nếu không được cung cấp
+    const calculatedTotalAmount = totalAmount || tickets.reduce((total, ticket) => {
+        if (!ticket.ticket) return total;
         const ticketInfo = existingTickets.find(t => t._id.toString() === ticket.ticket);
+        if (!ticketInfo) return total;
         return total + (ticketInfo.price * ticket.quantity);
     }, 0);
 
@@ -61,23 +86,30 @@ export const newBooking = async (req, res, next) => {
             showtime,
             seats,
             tickets,
-            totalAmount,
+            totalAmount: calculatedTotalAmount,
             paymentMethod,
             status: 'pending'
         });
         await payment.save({ session });
+        console.log("Payment created with ID:", payment._id);
 
-        // Tạo booking
+        // Tạo booking và liên kết với payment
         const booking = new Booking({
             user: userId,
             showtime,
             seats,
             tickets,
             payment: payment._id,
-            totalAmount,
+            totalAmount: calculatedTotalAmount,
             status: 'pending'
         });
         await booking.save({ session });
+        console.log("Booking created with ID:", booking._id);
+
+        // Cập nhật liên kết payment với booking
+        payment.booking = booking._id;
+        await payment.save({ session });
+        console.log("Updated payment with booking reference");
 
         // Cập nhật trạng thái ghế
         for (const seatId of seats) {
@@ -87,16 +119,28 @@ export const newBooking = async (req, res, next) => {
                 { session }
             );
         }
+        console.log("Updated seat status to 'booked'");
 
         // Cập nhật showtime
         existingShowtime.bookedSeats.push(...seats);
         await existingShowtime.save({ session });
+        console.log("Updated showtime booked seats");
 
         // Cập nhật user
         existingUser.bookings.push(booking._id);
         await existingUser.save({ session });
+        console.log("Updated user bookings");
+
+        // Increment bookingCount for the movie
+        await Movie.findByIdAndUpdate(
+            existingShowtime.movie,
+            { $inc: { bookingCount: 1 } },
+            { session }
+        );
+        console.log("Incremented movie booking count");
 
         await session.commitTransaction();
+        console.log("Transaction completed successfully");
 
         // Verify seat status after transaction
         const updatedSeats = await Seat.find({ _id: { $in: seats } });
@@ -110,10 +154,13 @@ export const newBooking = async (req, res, next) => {
         });
     } catch (error) {
         await session.abortTransaction();
+        console.error("Error in booking transaction:", error);
         return res.status(500).json({
             message: "Error creating booking",
             error: error.message
         });
+    } finally {
+        session.endSession();
     }
 };
 

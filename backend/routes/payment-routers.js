@@ -1,24 +1,28 @@
 import express from 'express';
 import {
-    createPayment,
+    getAllPayments,
     getPaymentById,
-    getPaymentsByUser,
     updatePaymentStatus,
-    getPaymentStats
+    getPaymentStats,
+    completeUserPayment
 } from '../controllers/payment-controller.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const paymentRouter = express.Router();
 
-// Public routes
-paymentRouter.post("/", createPayment);
+// Admin routes
+paymentRouter.get("/admin", verifyToken, getAllPayments);
+paymentRouter.get("/admin/stats", verifyToken, getPaymentStats);
+paymentRouter.get("/admin/:id", verifyToken, getPaymentById);
+paymentRouter.patch("/admin/:id/status", verifyToken, updatePaymentStatus);
 
-// Protected routes (authenticated)
-paymentRouter.get("/user/:userId", verifyToken, getPaymentsByUser);
+// User route - yêu cầu xác thực
+paymentRouter.patch("/complete/:id", verifyToken, completeUserPayment);
 
-// Admin only routes
-paymentRouter.get("/stats", verifyToken, getPaymentStats);
-paymentRouter.get("/:id", verifyToken, getPaymentById);
-paymentRouter.put("/:id/status", verifyToken, updatePaymentStatus);
+// Add a more permissive route that doesn't require token verification for testing
+// This should be removed in production
+if (process.env.NODE_ENV === 'development') {
+    paymentRouter.post("/test/complete/:id", completeUserPayment);
+}
 
-export default paymentRouter;   
+export default paymentRouter;

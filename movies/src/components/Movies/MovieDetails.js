@@ -75,6 +75,8 @@ const MovieDetails = () => {
                     const movieData = await getMovieDetails(id);
                     const showtimesData = await getMovieShowtimes(id);
 
+                    console.log("Fetched showtimes data:", showtimesData);
+
                     setMovie(movieData.movie);
                     setShowtimes(Array.isArray(showtimesData) ? showtimesData : []);
                 }
@@ -103,12 +105,46 @@ const MovieDetails = () => {
 
     // Filter showtimes based on selected date
     const filteredShowtimes = showtimes.filter(showtime => {
-        const showtimeDate = new Date(showtime.date);
+        let showtimeDate;
+
+        try {
+            // Try parsing the date if it's a string
+            if (typeof showtime.date === 'string') {
+                showtimeDate = new Date(showtime.date);
+
+                // If date is invalid, check if it's in DD/MM/YYYY format
+                if (isNaN(showtimeDate.getTime()) && showtime.date.includes('/')) {
+                    const parts = showtime.date.split('/');
+                    // Convert DD/MM/YYYY to MM/DD/YYYY for the Date constructor
+                    if (parts.length === 3) {
+                        showtimeDate = new Date(`${parts[1]}/${parts[0]}/${parts[2]}`);
+                    }
+                }
+            } else {
+                // If it's already a Date object
+                showtimeDate = showtime.date;
+            }
+        } catch (e) {
+            console.error("Error parsing showtime date:", e);
+            return false;
+        }
+
         const selectedDateValue = dates[selectedDate]?.fullDate;
 
-        // Filter by selected date
+        console.log("Showtime date parsing:", {
+            original: showtime.date,
+            parsed: showtimeDate,
+            valid: showtimeDate ? !isNaN(showtimeDate.getTime()) : false,
+            selectedDate: selectedDateValue
+        });
+
+        // If we can't parse the date properly, skip this item
+        if (!showtimeDate || isNaN(showtimeDate.getTime()) || !selectedDateValue) {
+            return false;
+        }
+
+        // Filter by selected date - compare only the date part (ignore time)
         return (
-            selectedDateValue &&
             showtimeDate.getDate() === selectedDateValue.getDate() &&
             showtimeDate.getMonth() === selectedDateValue.getMonth() &&
             showtimeDate.getFullYear() === selectedDateValue.getFullYear() &&
@@ -119,12 +155,23 @@ const MovieDetails = () => {
 
     // Group showtimes by cinema
     const showtimesByCinema = filteredShowtimes.reduce((acc, showtime) => {
-        if (!acc[showtime.cinema]) {
-            acc[showtime.cinema] = [];
+        // Make sure cinema name exists, use a default if not provided
+        const cinemaName = showtime.cinema || "Unknown Cinema";
+
+        if (!acc[cinemaName]) {
+            acc[cinemaName] = [];
         }
-        acc[showtime.cinema].push(showtime);
+        acc[cinemaName].push(showtime);
         return acc;
     }, {});
+
+    // Ensure each showtime has a valid screenType
+    const ensureScreenType = (showtimes) => {
+        return showtimes.map(showtime => ({
+            ...showtime,
+            screenType: showtime.screenType || "Standard"
+        }));
+    };
 
     if (!movie) {
         return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>Loading...</Box>;
@@ -265,8 +312,10 @@ const MovieDetails = () => {
                                         {/* Nhóm theo loại màn hình */}
                                         {Object.entries(
                                             times.reduce((acc, showtime) => {
-                                                acc[showtime.screenType] = acc[showtime.screenType] || [];
-                                                acc[showtime.screenType].push(showtime);
+                                                // Make sure screenType exists, use "Standard" as default
+                                                const screenType = showtime.screenType || "Standard";
+                                                acc[screenType] = acc[screenType] || [];
+                                                acc[screenType].push(showtime);
                                                 return acc;
                                             }, {})
                                         ).map(([screenType, showtimes]) => (
@@ -290,11 +339,54 @@ const MovieDetails = () => {
                                                                 }
                                                             }}
                                                         >
-                                                            {new Date(showtime.startTime).toLocaleTimeString('vi-VN', {
-                                                                hour: '2-digit',
-                                                                minute: '2-digit',
-                                                                hour12: false
-                                                            })}
+                                                            {(() => {
+                                                                const startTime = showtime.startTime;
+                                                                console.log("Rendering startTime:", {
+                                                                    original: showtime.startTime,
+                                                                    type: typeof showtime.startTime
+                                                                });
+
+                                                                // Handle different time formats
+
+                                                                // If startTime is a string in HH:MM or HH:MM:SS format
+                                                                if (typeof startTime === 'string') {
+                                                                    // HH:MM or HH:MM:SS format
+                                                                    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(startTime)) {
+                                                                        return startTime.substring(0, 5); // Return HH:MM
+                                                                    }
+
+                                                                    // Try to parse as ISO date string or other format
+                                                                    try {
+                                                                        const timeObj = new Date(startTime);
+                                                                        if (!isNaN(timeObj.getTime())) {
+                                                                            return timeObj.toLocaleTimeString('vi-VN', {
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit',
+                                                                                hour12: false
+                                                                            });
+                                                                        }
+                                                                    } catch (e) {
+                                                                        console.error("Error parsing time:", e);
+                                                                    }
+                                                                }
+
+                                                                // If it's a number (timestamp)
+                                                                if (typeof startTime === 'number') {
+                                                                    try {
+                                                                        const timeObj = new Date(startTime);
+                                                                        return timeObj.toLocaleTimeString('vi-VN', {
+                                                                            hour: '2-digit',
+                                                                            minute: '2-digit',
+                                                                            hour12: false
+                                                                        });
+                                                                    } catch (e) {
+                                                                        console.error("Error parsing timestamp:", e);
+                                                                    }
+                                                                }
+
+                                                                // Fallback to showing time as is or a default
+                                                                return startTime || "Invalid Time";
+                                                            })()}
                                                         </Button>
                                                     ))}
                                                 </Box>

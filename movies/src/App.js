@@ -8,7 +8,7 @@ import Auth from "./components/Auth/Auth";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect } from "react";
 import { adminActions, userActions } from "./store";
-import Booking from "./components/Bookings/Booking";
+import SeatBooking from "./components/Bookings/Booking";
 import UserProfile from "./components/Profile/UserProfile";
 import AdminProfile from "./components/Profile/AdminProfile";
 import Dashboard from "./components/Admin/Dashboard/Dashboard";
@@ -29,6 +29,7 @@ import BookingManagement from "./components/Admin/Bookings/BookingManagement";
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Container, Box } from '@mui/material';
 import { theme } from './theme';
+import PaymentManagement from "./components/Admin/Payments/PaymentManagement";
 
 function App() {
   const dispatch = useDispatch();
@@ -71,10 +72,11 @@ function App() {
 
             {/* Quản lý suất chiếu */}
             <Route path="/showtimes-management" element={<ShowtimeManagement />} />
+
             <Route path="/seats-management" element={<SeatManagement />} />
             <Route path="/tickets-management" element={<TicketManagement />} />
             <Route path="/bookings-management" element={<BookingManagement />} />
-            <Route path="/payments-management" element={<Dashboard />} />
+            <Route path="/payments-management" element={<PaymentManagement />} />
             <Route path="/accounts-management" element={<Dashboard />} />
           </>
         )}
@@ -112,9 +114,10 @@ function App() {
                 {isUserLoggedIn && !isAdminLoggedIn && (
                   <>
                     <Route path="/user" element={<UserProfile />} />
-                    <Route path="/booking/:id" element={<Booking />} />
                   </>
                 )}
+                {/* Make booking route accessible to all visitors */}
+                <Route path="/booking/:id" element={<SeatBooking />} />
                 {isAdminLoggedIn && !isUserLoggedIn && (
                   <>
                     <Route path="/user-admin" element={<AdminProfile />} />

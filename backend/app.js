@@ -29,6 +29,36 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Middleware để log tất cả các yêu cầu API
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+        console.log('Request body:', JSON.stringify(req.body));
+    }
+
+    // Lưu thời gian bắt đầu yêu cầu
+    const start = Date.now();
+
+    // Lưu phương thức res.send gốc
+    const originalSend = res.send;
+
+    // Ghi đè phương thức res.send để log phản hồi
+    res.send = function (body) {
+        const responseTime = Date.now() - start;
+        console.log(`[${new Date().toISOString()}] Response ${res.statusCode} sent in ${responseTime}ms`);
+
+        if (res.statusCode >= 400) {
+            console.error('Error response:', body);
+        }
+
+        // Gọi phương thức gốc
+        return originalSend.call(this, body);
+    };
+
+    next();
+});
+
 // Database connection
 mongoose.connect(process.env.MONGO_URL)
     .then(() => console.log('Connected to MongoDB'))

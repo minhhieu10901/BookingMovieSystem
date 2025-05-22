@@ -936,14 +936,315 @@ export const fetchCinemas = async () => {
 export const getMovieShowtimes = async (movieId) => {
     try {
         const res = await axios.get(`/api/movies/${movieId}/showtimes`);
+
         if (res.status !== 200) {
-            return console.log("Unexpected Error");
+            console.log("Unexpected Error in getMovieShowtimes");
+            return [];
         }
 
         const resData = await res.data;
-        return resData.showtimes;
+
+        // Add debugging
+        console.log("Movie showtimes API response:", resData);
+
+        // Make sure we have an array of showtimes
+        let showtimesArray = resData.showtimes || [];
+
+        // Process the showtimes to ensure they have the required fields
+        const processedShowtimes = showtimesArray.map(showtime => {
+            // Ensure startTime is in the correct format
+            let startTime = showtime.startTime;
+
+            // Make sure critical fields exist
+            return {
+                ...showtime,
+                id: showtime.id || showtime._id,
+                date: showtime.date || new Date().toISOString().split('T')[0],
+                startTime: startTime,
+                cinema: showtime.cinema || "Unknown Cinema",
+                screenType: showtime.screenType || "Standard"
+            };
+        });
+
+        console.log("Processed showtimes:", processedShowtimes);
+        return processedShowtimes;
     } catch (err) {
-        console.log(err);
+        console.error("Error in getMovieShowtimes:", err);
         return [];
+    }
+};
+
+// Fetch showtime details by ID
+export const getShowtimeById = async (id) => {
+    try {
+        const res = await axios.get(`/api/showtimes/${id}`);
+        if (res.status !== 200) {
+            throw new Error("Không thể tải thông tin suất chiếu");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching showtime:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+// Get seats with availability for a specific showtime
+export const getSeatsForShowtime = async (showtimeId) => {
+    try {
+        // First, get the showtime to find the room ID
+        const showtimeData = await getShowtimeById(showtimeId);
+
+        if (!showtimeData || !showtimeData.showtime) {
+            throw new Error("Không thể tải thông tin suất chiếu");
+        }
+
+        // Extract room ID from showtime
+        const roomId = typeof showtimeData.showtime.room === 'object'
+            ? showtimeData.showtime.room._id || showtimeData.showtime.room.id
+            : showtimeData.showtime.room;
+
+        if (!roomId) {
+            throw new Error("Không tìm thấy thông tin phòng chiếu");
+        }
+
+        // Get seats for this room
+        return await getSeatsByRoom(roomId);
+    } catch (err) {
+        console.error("Error fetching seats for showtime:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+// User booking actions
+export const createBooking = async (bookingData) => {
+    try {
+        // Lấy userId và accessToken từ localStorage
+        const userId = localStorage.getItem("userId");
+        const accessToken = localStorage.getItem("accessToken");
+
+        if (!userId) {
+            console.error("Missing userId in localStorage");
+            const error = new Error("Vui lòng đăng nhập để đặt vé");
+            error.requiresAuth = true;
+            throw error;
+        }
+
+        // Thêm userId vào bookingData 
+        const completeBookingData = {
+            ...bookingData,
+            user: userId
+        };
+
+        console.log("API - Sending booking data:", JSON.stringify(completeBookingData));
+
+        // Thực hiện POST request với token xác thực
+        console.log("API - Calling POST to /api/bookings");
+        const res = await axios.post('/api/bookings', completeBookingData, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        });
+
+        console.log("API - POST response status:", res.status);
+        console.log("API - POST response data:", res.data);
+
+        if (res.status !== 201) {
+            console.error("API - Unexpected response status:", res.status);
+            throw new Error(`Không thể tạo đơn đặt vé (status: ${res.status})`);
+        }
+
+        return res.data;
+    } catch (err) {
+        console.error("API - Error creating booking:", err);
+        if (err.response) {
+            console.error("API - Error response:", err.response.status, err.response.data);
+            if (err.response.status === 401) {
+                // Token hết hạn hoặc không hợp lệ
+                const error = new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+                error.requiresAuth = true;
+                throw error;
+            }
+        }
+        throw err;
+    }
+};
+
+export const getTicketPrices = async () => {
+    try {
+        const res = await axios.get("/api/tickets");
+        if (res.status !== 200) {
+            throw new Error("Không thể tải thông tin giá vé");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching ticket prices:", err.response?.data || err.message);
+        return { tickets: [] };
+    }
+};
+
+// Payment Management API functions
+export const getAllPayments = async () => {
+    try {
+        const res = await axios.get('/api/payments/admin', {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+        if (res.status !== 200) {
+            throw new Error("Không thể tải danh sách thanh toán");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching payments:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+export const getPaymentById = async (id) => {
+    try {
+        const res = await axios.get(`/api/payments/admin/${id}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+        if (res.status !== 200) {
+            throw new Error("Không thể tải thông tin thanh toán");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching payment details:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+export const updatePaymentStatus = async (id, statusData) => {
+    try {
+        const res = await axios.patch(`/api/payments/admin/${id}/status`, statusData, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+        if (res.status !== 200) {
+            throw new Error("Không thể cập nhật trạng thái thanh toán");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error updating payment status:", err.response?.data || err.message);
+        throw err;
+    }
+};
+
+export const getPaymentStats = async () => {
+    try {
+        const res = await axios.get('/api/payments/admin/stats', {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            }
+        });
+        if (res.status !== 200) {
+            throw new Error("Không thể tải thống kê thanh toán");
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching payment stats:", err.response?.data || err.message);
+        return { totalStats: [] };
+    }
+};
+
+// Complete payment after successful transaction
+export const completePayment = async (paymentId) => {
+    try {
+        const accessToken = localStorage.getItem("accessToken");
+
+        if (!paymentId) {
+            console.error("ID thanh toán không hợp lệ");
+            throw new Error("ID thanh toán không hợp lệ");
+        }
+
+        console.log("Bắt đầu cập nhật thanh toán ID:", paymentId);
+
+        // First try with PATCH request
+        try {
+            const res = await axios.patch(`/api/payments/complete/${paymentId}`, {}, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            });
+
+            console.log("Phản hồi từ API thanh toán:", res.status, res.data);
+
+            if (res.status === 200) {
+                console.log("Cập nhật thanh toán thành công:", res.data);
+                return {
+                    success: true,
+                    message: "Cập nhật trạng thái thanh toán thành công",
+                    payment: res.data.payment,
+                    booking: res.data.booking,
+                    showtime: res.data.showtime
+                };
+            }
+        } catch (patchError) {
+            console.warn("PATCH request failed, attempting fallback:", patchError.message);
+
+            // For development environment, try fallback to POST request if PATCH fails
+            // This should be removed in production
+            if (process.env.NODE_ENV !== 'production') {
+                try {
+                    console.log("Trying fallback POST request for payment completion");
+                    const fallbackRes = await axios.post(`/api/payments/test/complete/${paymentId}`, {});
+
+                    if (fallbackRes.status === 200) {
+                        console.log("Fallback payment completion successful:", fallbackRes.data);
+                        return {
+                            success: true,
+                            message: "Cập nhật trạng thái thanh toán thành công (fallback)",
+                            payment: fallbackRes.data.payment,
+                            booking: fallbackRes.data.booking,
+                            showtime: fallbackRes.data.showtime
+                        };
+                    }
+                } catch (fallbackError) {
+                    console.error("Fallback POST request also failed:", fallbackError.message);
+                    // Continue to general error handling
+                }
+            }
+        }
+
+        // If we get here, neither approach worked
+        return {
+            success: false,
+            message: "Không thể cập nhật trạng thái thanh toán sau nhiều lần thử",
+            error: "API errors"
+        };
+
+    } catch (err) {
+        console.error("Lỗi cập nhật thanh toán:", err.response?.data || err.message);
+        if (err.response?.status === 401) {
+            // Token hết hạn hoặc không hợp lệ
+            return {
+                success: false,
+                message: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
+                requiresAuth: true
+            };
+        }
+        return {
+            success: false,
+            message: err.response?.data?.message || "Cập nhật trạng thái thanh toán thất bại",
+            error: err.response?.data || err.message
+        };
+    }
+};
+
+export const getMostBookedMovies = async () => {
+    try {
+        const res = await axios.get("/api/movies/most-booked");
+        if (!res || res.status !== 200) {
+            console.log("Không thể lấy danh sách phim được đặt nhiều nhất");
+            return { movies: [] };
+        }
+        return res.data;
+    } catch (err) {
+        console.error("Error fetching most booked movies:", err.response?.data || err.message);
+        return { movies: [] };
     }
 };

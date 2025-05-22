@@ -51,6 +51,10 @@ const movieSchema = new mongoose.Schema({
         enum: ['coming_soon', 'now_showing', 'ended'],
         default: 'coming_soon'
     },
+    bookingCount: {
+        type: Number,
+        default: 0
+    },
     showtimes: [{
         type: mongoose.Types.ObjectId,
         ref: "Showtime"

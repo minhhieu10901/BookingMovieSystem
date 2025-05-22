@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
 
-const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating }) => {
+const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating, badge, highlighted }) => {
   return (
     <Card
       sx={{
@@ -17,13 +18,14 @@ const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating 
         flexDirection: 'column',
         borderRadius: 2,
         overflow: 'hidden',
-        boxShadow: 2,
+        boxShadow: highlighted ? '0 0 20px rgba(244, 67, 54, 0.5)' : 2,
         mx: 'auto',
         transition: 'transform 0.2s, box-shadow 0.2s',
         '&:hover': {
           transform: 'translateY(-4px) scale(1.03)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-        }
+          boxShadow: highlighted ? '0 8px 30px rgba(244, 67, 54, 0.5)' : '0 8px 24px rgba(0,0,0,0.18)',
+        },
+        border: highlighted ? '2px solid #f44336' : 'none',
       }}
     >
       <Box
@@ -83,6 +85,25 @@ const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating 
             }}
           />
         )}
+
+        {badge && (
+          <Chip
+            icon={<WhatshotIcon />}
+            label={badge}
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              backgroundColor: 'rgba(244, 67, 54, 0.9)',
+              color: 'white',
+              fontWeight: 'bold',
+              '&:hover': {
+                backgroundColor: 'rgba(244, 67, 54, 1)',
+              }
+            }}
+          />
+        )}
       </Box>
 
       <CardContent sx={{ flexGrow: 1, p: 1.2 }}>
@@ -99,7 +120,8 @@ const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating 
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
-            textOverflow: 'ellipsis'
+            textOverflow: 'ellipsis',
+            color: highlighted ? 'error.main' : 'inherit',
           }}
         >
           {title}
@@ -142,9 +164,9 @@ const MovieItem = ({ title, releaseDate, posterUrl, id, duration, genre, rating 
           to={`/movies/${id}`}
           sx={{
             py: 0.7,
-            backgroundColor: '#2b2d42',
+            backgroundColor: highlighted ? 'error.main' : '#2b2d42',
             '&:hover': {
-              backgroundColor: '#121217'
+              backgroundColor: highlighted ? 'error.dark' : '#121217'
             },
             borderRadius: 2,
             textTransform: 'none',
